@@ -3,6 +3,9 @@
 // Storage and upserts the guardian + its current version row.
 //
 // Usage: node scripts/ingest-guardian.mjs "<Full Name>" <local_file_path>
+//     or: node scripts/ingest-guardian.mjs --json <path-to-{name,filePath}.json>
+// The --json form sidesteps shell-quoting issues with unicode/apostrophes
+// in names during batch runs.
 //
 // Safe to re-run for the same name: if the guardian already has a current
 // version, this creates a NEW version and flips the current pointer rather
@@ -12,9 +15,15 @@ import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 import { randomUUID } from "node:crypto";
 
-const [, , name, filePath] = process.argv;
+let name, filePath;
+if (process.argv[2] === "--json") {
+  ({ name, filePath } = JSON.parse(readFileSync(process.argv[3], "utf8")));
+} else {
+  [, , name, filePath] = process.argv;
+}
 if (!name || !filePath) {
   console.error("Usage: node scripts/ingest-guardian.mjs \"<Full Name>\" <local_file_path>");
+  console.error("   or: node scripts/ingest-guardian.mjs --json <path-to-{name,filePath}.json>");
   process.exit(1);
 }
 
