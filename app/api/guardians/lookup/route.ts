@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       // still finds someone.
       let { data } = await supabase
         .from("guardians")
-        .select("id,name,status,guardian_versions(result_path,is_current)")
+        .select("id,name,status,updated_at,guardian_versions(result_path,is_current)")
         .eq("guardian_versions.is_current", true)
         .ilike("name", name)
         .limit(1);
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       if (!data || data.length === 0) {
         ({ data } = await supabase
           .from("guardians")
-          .select("id,name,status,guardian_versions(result_path,is_current)")
+          .select("id,name,status,updated_at,guardian_versions(result_path,is_current)")
           .eq("guardian_versions.is_current", true)
           .ilike("name", `%${name}%`)
           .limit(1));
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
           bucket: "has_result" as const,
           guardianId: match.id,
           matchedName: match.name,
+          updatedAt: match.updated_at,
           thumbUrl: signed?.signedUrl ?? null,
         };
       }

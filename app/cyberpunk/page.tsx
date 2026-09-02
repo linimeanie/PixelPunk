@@ -8,11 +8,70 @@ type LookupHit = {
   bucket: "has_result" | "unrecognized";
   guardianId?: string;
   matchedName?: string;
+  updatedAt?: string;
   thumbUrl?: string | null;
 };
 
 function parseNames(raw: string): string[] {
   return [...new Set(raw.split(/[,\n]/).map((n) => n.trim()).filter(Boolean))];
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+// Proper CSV parsing (quoted-field aware) that only pulls the identifying
+// name column — a roster with "Name, Job Title, Country, ..." columns
+// should not turn "Job Title" or "Germany" into names to look up.
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else inQuotes = false;
+      } else cell += c;
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell);
+      if (row.some((x) => x.trim() !== "")) rows.push(row);
+      row = [];
+      cell = "";
+    } else {
+      cell += c;
+    }
+  }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell);
+    if (row.some((x) => x.trim() !== "")) rows.push(row);
+  }
+  return rows.map((r) => r.map((c) => c.trim()));
+}
+
+const NAME_HEADER_LABELS = ["name", "full name", "guardian", "guardian name", "person"];
+
+function extractNamesFromCsv(text: string): string[] {
+  const rows = parseCsvRows(text);
+  if (rows.length === 0) return [];
+
+  const firstRowLower = rows[0].map((c) => c.toLowerCase());
+  const nameColIndex = firstRowLower.findIndex((c) => NAME_HEADER_LABELS.includes(c));
+  const hasHeader = nameColIndex >= 0 || (rows[0].length > 1 && firstRowLower.some((c) => c === "job title" || c === "country" || c === "company"));
+
+  const col = nameColIndex >= 0 ? nameColIndex : 0;
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+  return [...new Set(dataRows.map((r) => (r[col] ?? "").trim()).filter(Boolean))];
 }
 
 async function urlToBase64(url: string): Promise<string> {
@@ -21,7 +80,7 @@ async function urlToBase64(url: string): Promise<string> {
   return btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""));
 }
 
-type Suggestion = { id: string; name: string; thumbUrl: string | null };
+type Suggestion = { id: string; name: string; updatedAt: string; thumbUrl: string | null };
 
 export default function CyberpunkModule() {
   const [lookupInput, setLookupInput] = useState("");
@@ -53,7 +112,9 @@ export default function CyberpunkModule() {
   function pickSuggestion(s: Suggestion) {
     setLookupInput(s.name);
     setSuggestions([]);
-    setLookupResults([{ queried: s.name, bucket: "has_result", guardianId: s.id, matchedName: s.name, thumbUrl: s.thumbUrl }]);
+    setLookupResults([
+      { queried: s.name, bucket: "has_result", guardianId: s.id, matchedName: s.name, updatedAt: s.updatedAt, thumbUrl: s.thumbUrl },
+    ]);
   }
 
   async function runLookup(namesOverride?: string[]) {
@@ -242,7 +303,8 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
 
     for (const f of textFiles) {
       const text = await f.text();
-      onNamesFromCsv(parseNames(text));
+      const names = /\.csv$/i.test(f.name) ? extractNamesFromCsv(text) : parseNames(text);
+      onNamesFromCsv(names);
     }
 
     if (imageFiles.length > 0) {
@@ -543,15 +605,17 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
         )}
         <div className="flex-1">
           <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">has result</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+            {hit.updatedAt ? formatDate(hit.updatedAt) : ""}
+          </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center divide-x divide-[#2a1e42]">
           {hit.thumbUrl && (
-            <a href={hit.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+            <a href={hit.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
               Download
             </a>
           )}
-          <button onClick={() => setMode(mode === "edit" ? null : "edit")} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+          <button onClick={() => setMode(mode === "edit" ? null : "edit")} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
             Ask for a change
           </button>
           <button
@@ -559,7 +623,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
               setMode("replace");
               fileRef.current?.click();
             }}
-            className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
+            className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
           >
             Replace photo
           </button>

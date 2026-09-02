@@ -141,18 +141,18 @@ export default function CyberpunkDatabase() {
                 {formatDate(r.updatedAt)}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center divide-x divide-[#2a1e42]">
               {r.thumbUrl && (
                 <>
-                  <button onClick={() => setViewing(r)} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                  <button onClick={() => setViewing(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                     View
                   </button>
-                  <a href={r.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                  <a href={r.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                     Download
                   </a>
                 </>
               )}
-              <button onClick={() => deleteOne(r)} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <button onClick={() => deleteOne(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Delete
               </button>
             </div>
