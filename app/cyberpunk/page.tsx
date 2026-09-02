@@ -155,6 +155,15 @@ export default function CyberpunkModule() {
     setLookupResults(null);
   }
 
+  // A "no picture on file" name that just got uploaded + approved moves
+  // into the found list so it shows up alongside the rest of this search
+  // and is included in bulk download.
+  function resolveMissing(queried: string, resolved: Omit<LookupHit, "queried" | "bucket">) {
+    setLookupResults((prev) =>
+      (prev ?? []).map((r) => (r.queried === queried ? { ...r, ...resolved, bucket: "has_result" } : r))
+    );
+  }
+
   const found = lookupResults?.filter((r) => r.bucket === "has_result") ?? [];
   const missing = lookupResults?.filter((r) => r.bucket === "unrecognized") ?? [];
 
@@ -282,7 +291,7 @@ export default function CyberpunkModule() {
               </p>
               <div className="mt-2 flex flex-col gap-3">
                 {missing.map((r) => (
-                  <MissingCard key={r.queried} name={r.queried} />
+                  <MissingCard key={r.queried} name={r.queried} onResolved={(resolved) => resolveMissing(r.queried, resolved)} />
                 ))}
               </div>
             </div>
@@ -746,11 +755,16 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
   );
 }
 
-function MissingCard({ name }: { name: string }) {
+function MissingCard({
+  name,
+  onResolved,
+}: {
+  name: string;
+  onResolved: (resolved: { guardianId: string; matchedName: string; updatedAt: string; thumbUrl: string }) => void;
+}) {
   const [previewBase64, setPreviewBase64] = useState<string | null>(null);
   const [rawBase64, setRawBase64] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
 
   async function generate(file: File) {
     setBusy(true);
@@ -771,20 +785,23 @@ function MissingCard({ name }: { name: string }) {
 
   async function approve() {
     if (!previewBase64) return;
-    await fetch("/api/guardians/approve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, resultBase64: previewBase64, rawBase64: rawBase64 ?? undefined }),
-    });
-    setDone(true);
-  }
-
-  if (done) {
-    return (
-      <div className="rounded-lg border border-[#2a1e42] p-4 text-sm text-[#8b7ba8]">
-        {name} — added to the database.
-      </div>
-    );
+    setBusy(true);
+    try {
+      const res = await fetch("/api/guardians/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, resultBase64: previewBase64, rawBase64: rawBase64 ?? undefined }),
+      });
+      const data = await res.json();
+      onResolved({
+        guardianId: data.guardianId,
+        matchedName: name,
+        updatedAt: new Date().toISOString(),
+        thumbUrl: `data:image/png;base64,${previewBase64}`,
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
