@@ -19,11 +19,13 @@ export async function commitGuardianVersion({
   resultBytes,
   rawPhotoBytes,
   regenerationNote,
+  attioId,
 }: {
   name: string;
   resultBytes: Buffer;
   rawPhotoBytes?: Buffer;
   regenerationNote?: string;
+  attioId?: string;
 }) {
   const supabase = supabaseAdmin();
 
@@ -31,7 +33,7 @@ export async function commitGuardianVersion({
   if (!guardian) {
     const { data, error } = await supabase
       .from("guardians")
-      .insert({ name, status: "has_result", source: "staff_upload" })
+      .insert({ name, status: "has_result", source: "staff_upload", attio_id: attioId })
       .select("id,name")
       .single();
     if (error) throw new Error(error.message);
@@ -39,7 +41,7 @@ export async function commitGuardianVersion({
   } else {
     await supabase
       .from("guardians")
-      .update({ status: "has_result" })
+      .update({ status: "has_result", ...(attioId ? { attio_id: attioId } : {}) })
       .eq("id", guardian.id);
     await supabase
       .from("guardian_versions")

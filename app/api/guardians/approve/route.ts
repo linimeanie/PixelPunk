@@ -5,11 +5,12 @@ import { commitGuardianVersion } from "@/lib/guardians";
 // human has looked at a /generate or /[id]/edit preview and clicked
 // "Add to database" / "Approve" — never automatically.
 export async function POST(req: NextRequest) {
-  const { name, resultBase64, rawBase64, regenerationNote } = (await req.json()) as {
+  const { name, resultBase64, rawBase64, regenerationNote, attioId } = (await req.json()) as {
     name: string;
     resultBase64: string;
     rawBase64?: string;
     regenerationNote?: string;
+    attioId?: string;
   };
 
   if (!name?.trim() || !resultBase64) {
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest) {
       resultBytes: Buffer.from(resultBase64, "base64"),
       rawPhotoBytes: rawBase64 ? Buffer.from(rawBase64, "base64") : undefined,
       regenerationNote,
+      attioId,
     });
     return NextResponse.json({ ok: true, guardianId });
   } catch (err) {

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { findGuardianInAttio } from "@/lib/attio";
+import { findHarmonicPhotoUrl } from "@/lib/harmonic";
+import { generateCyberpunkPortrait } from "@/lib/openai";
 
 // Bucketed multi-name lookup: paste/upload a list of names and see which
-// already have a result vs. which aren't recognised at all. (Attio
-// cross-referencing for a distinct "recognised, no photo yet" bucket isn't
-// wired up yet — everything not found locally currently falls into
-// "unrecognized".)
+// already have a result, which can be pulled from Harmonic (rare, but
+// worth trying), and which need a raw photo from scratch.
 export async function POST(req: NextRequest) {
   const { names } = (await req.json()) as { names: string[] };
   if (!Array.isArray(names) || names.length === 0) {
@@ -51,6 +52,37 @@ export async function POST(req: NextRequest) {
           updatedAt: match.updated_at,
           thumbUrl: signed?.signedUrl ?? null,
         };
+      }
+
+      // Not in our database — see if Attio knows them, and if Harmonic
+      // has a photo for them, before giving up and asking for a raw upload.
+      const attioMatch = await findGuardianInAttio(name);
+      if (attioMatch) {
+        // Attio's own avatar_url is sometimes a dead link (stale FullContact
+        // URLs that 404), so it's a candidate to try, not a guarantee — if
+        // it fails, fall through to Harmonic rather than giving up.
+        const harmonicUrl = await findHarmonicPhotoUrl(attioMatch.linkedinUrl, attioMatch.email);
+        const candidates = [attioMatch.avatarUrl, harmonicUrl].filter((u): u is string => Boolean(u));
+
+        for (const photoUrl of candidates) {
+          try {
+            const imgRes = await fetch(photoUrl);
+            if (!imgRes.ok) continue;
+            const rawBytes = Buffer.from(await imgRes.arrayBuffer());
+            const mimeType = imgRes.headers.get("content-type") || "image/jpeg";
+            const resultBytes = await generateCyberpunkPortrait(rawBytes, mimeType);
+            return {
+              queried: name,
+              bucket: "harmonic_found" as const,
+              matchedName: attioMatch.fullName,
+              attioId: attioMatch.attioId,
+              resultBase64: resultBytes.toString("base64"),
+              rawBase64: rawBytes.toString("base64"),
+            };
+          } catch {
+            // try the next candidate
+          }
+        }
       }
 
       return { queried: name, bucket: "unrecognized" as const };

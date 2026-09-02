@@ -170,7 +170,14 @@ export default function CyberpunkDatabase() {
           onClick={() => setViewing(null)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
         >
-          <div onClick={(e) => e.stopPropagation()} className="max-w-lg">
+          <div onClick={(e) => e.stopPropagation()} className="relative max-w-lg">
+            <button
+              onClick={() => setViewing(null)}
+              aria-label="Close"
+              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#16112c] text-white hover:bg-[#2a1e42]"
+            >
+              ✕
+            </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={viewing.thumbUrl ?? ""}
@@ -179,14 +186,9 @@ export default function CyberpunkDatabase() {
             />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{viewing.name}</p>
-              <div className="flex gap-3">
-                <a href={viewing.thumbUrl ?? ""} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                  Download
-                </a>
-                <button onClick={() => setViewing(null)} className="font-mono text-xs text-[#8b7ba8] hover:text-white">
-                  Close
-                </button>
-              </div>
+              <a href={viewing.thumbUrl ?? ""} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                Download
+              </a>
             </div>
           </div>
         </div>

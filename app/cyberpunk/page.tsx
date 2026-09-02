@@ -5,11 +5,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type LookupHit = {
   queried: string;
-  bucket: "has_result" | "unrecognized";
+  bucket: "has_result" | "harmonic_found" | "unrecognized";
   guardianId?: string;
   matchedName?: string;
   updatedAt?: string;
   thumbUrl?: string | null;
+  attioId?: string;
+  resultBase64?: string;
+  rawBase64?: string;
 };
 
 function parseNames(raw: string): string[] {
@@ -155,16 +158,20 @@ export default function CyberpunkModule() {
     setLookupResults(null);
   }
 
-  // A "no picture on file" name that just got uploaded + approved moves
-  // into the found list so it shows up alongside the rest of this search
-  // and is included in bulk download.
+  function updateLookupHit(queried: string, changes: Partial<LookupHit>) {
+    setLookupResults((prev) => (prev ?? []).map((r) => (r.queried === queried ? { ...r, ...changes } : r)));
+  }
+
+  // A "no picture on file" name that just got uploaded + approved (or a
+  // Harmonic-sourced preview that got confirmed) moves into the found
+  // list so it shows up alongside the rest of this search and is
+  // included in bulk download.
   function resolveMissing(queried: string, resolved: Omit<LookupHit, "queried" | "bucket">) {
-    setLookupResults((prev) =>
-      (prev ?? []).map((r) => (r.queried === queried ? { ...r, ...resolved, bucket: "has_result" } : r))
-    );
+    updateLookupHit(queried, { ...resolved, bucket: "has_result" });
   }
 
   const found = lookupResults?.filter((r) => r.bucket === "has_result") ?? [];
+  const harmonicFound = lookupResults?.filter((r) => r.bucket === "harmonic_found") ?? [];
   const missing = lookupResults?.filter((r) => r.bucket === "unrecognized") ?? [];
 
   async function downloadZip() {
@@ -281,6 +288,35 @@ export default function CyberpunkModule() {
             </div>
           )}
 
+          {harmonicFound.length > 0 && (
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+                {harmonicFound.length} found via Harmonic
+              </p>
+              <p className="mt-1 text-xs text-[#6b5f8a]">
+                Not in our database, but Harmonic had a photo — already cyberpunked below. Confirm it&rsquo;s really
+                them before adding.
+              </p>
+              <div className="mt-2 flex flex-col gap-3">
+                {harmonicFound.map((r) => (
+                  <HarmonicFoundCard
+                    key={r.queried}
+                    hit={r}
+                    onResolved={(resolved) => resolveMissing(r.queried, resolved)}
+                    onDiscarded={() =>
+                      updateLookupHit(r.queried, {
+                        bucket: "unrecognized",
+                        resultBase64: undefined,
+                        rawBase64: undefined,
+                        attioId: undefined,
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {missing.length > 0 && (
             <div>
               <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
@@ -306,10 +342,12 @@ type QueueItem = {
   key: string;
   name: string;
   file: File;
-  status: "needs_review" | "queued" | "processing" | "preview" | "approved" | "error";
+  status: "needs_review" | "duplicate_review" | "queued" | "processing" | "preview" | "approved" | "error";
   previewBase64?: string;
   rawBase64?: string;
   error?: string;
+  existingThumbUrl?: string;
+  guardianId?: string;
 };
 
 function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => void }) {
@@ -330,23 +368,38 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
     }
 
     if (imageFiles.length > 0) {
-      setQueue((q) => [
-        ...q,
-        ...imageFiles.map((file) => {
+      const newItems: QueueItem[] = await Promise.all(
+        imageFiles.map(async (file) => {
           const name = file.name.replace(/\.[^.]+$/, "");
-          return {
-            key: `${file.name}-${file.lastModified}-${Math.random()}`,
-            name,
-            file,
-            status: (looksLikePersonName(name) ? "queued" : "needs_review") as QueueItem["status"],
-          };
-        }),
-      ]);
+          const key = `${file.name}-${file.lastModified}-${Math.random()}`;
+          if (!looksLikePersonName(name)) {
+            return { key, name, file, status: "needs_review" as const };
+          }
+          // Does this name already have a photo? A bulk upload has no
+          // side-by-side view to notice an accidental overwrite, so flag
+          // it explicitly rather than silently versioning them.
+          try {
+            const res = await fetch(`/api/guardians/exists?name=${encodeURIComponent(name)}`);
+            const data = await res.json();
+            if (data.exists) {
+              return { key, name, file, status: "duplicate_review" as const, existingThumbUrl: data.thumbUrl };
+            }
+          } catch {
+            // if the check itself fails, don't block the upload over it
+          }
+          return { key, name, file, status: "queued" as const };
+        })
+      );
+      setQueue((q) => [...q, ...newItems]);
     }
   }
 
   function confirmName(item: QueueItem, name: string) {
     setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, name, status: "queued" } : i)));
+  }
+
+  function proceedAnyway(item: QueueItem) {
+    setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, status: "queued" } : i)));
   }
 
   useEffect(() => {
@@ -385,12 +438,13 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
 
   async function approve(item: QueueItem) {
     if (!item.previewBase64) return;
-    await fetch("/api/guardians/approve", {
+    const res = await fetch("/api/guardians/approve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: item.name, resultBase64: item.previewBase64, rawBase64: item.rawBase64 }),
     });
-    setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, status: "approved" } : i)));
+    const data = await res.json();
+    setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, status: "approved", guardianId: data.guardianId } : i)));
   }
 
   function discard(item: QueueItem) {
@@ -398,6 +452,23 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
   }
 
   const queuedCount = queue.filter((i) => i.status === "queued" || i.status === "processing").length;
+  const approvedItems = queue.filter((i) => i.status === "approved");
+
+  async function downloadApprovedZip() {
+    const ids = approvedItems.map((i) => i.guardianId!).filter(Boolean);
+    const res = await fetch("/api/guardians/download-zip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "guardians.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="mt-4">
@@ -464,6 +535,9 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
                 {item.status === "needs_review" && (
                   <NeedsReviewRow item={item} onConfirm={(name) => confirmName(item, name)} />
                 )}
+                {item.status === "duplicate_review" && (
+                  <DuplicateReviewRow item={item} onProceed={() => proceedAnyway(item)} onSkip={() => discard(item)} />
+                )}
                 {item.status === "queued" && <p className="mt-1 text-xs text-[#6b5f8a]">Queued…</p>}
                 {item.status === "processing" && <p className="mt-1 text-xs text-[#6b5f8a]">Generating…</p>}
                 {item.status === "error" && <p className="mt-1 text-xs text-[#ff6b8f]">{item.error}</p>}
@@ -492,6 +566,44 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
             ))}
         </div>
       )}
+
+      {approvedItems.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+              {approvedItems.length} retrofied
+            </p>
+            {approvedItems.length > 1 && (
+              <button
+                onClick={downloadApprovedZip}
+                className="rounded-md border border-[#2a1e42] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
+              >
+                Download all (.zip)
+              </button>
+            )}
+          </div>
+          <div className="mt-2 flex flex-col divide-y divide-[#2a1e42] rounded-lg border border-[#2a1e42]">
+            {approvedItems.map((item) => (
+              <div key={item.key} className="flex items-center gap-4 p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`data:image/png;base64,${item.previewBase64}`}
+                  alt={item.name}
+                  className="h-12 w-12 rounded-full object-cover"
+                />
+                <p className="flex-1 text-sm font-medium text-white">{item.name}</p>
+                <a
+                  href={`data:image/png;base64,${item.previewBase64}`}
+                  download={`${item.name}.png`}
+                  className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -501,6 +613,39 @@ function WarningBox({ children }: { children: ReactNode }) {
     <div className="mt-2 flex items-start gap-2 rounded-md border border-[#ff6b8f]/40 bg-[#2a1215] px-3 py-2 text-xs text-[#ff6b8f]">
       <span>⚠️</span>
       <span>{children}</span>
+    </div>
+  );
+}
+
+function DuplicateReviewRow({
+  item,
+  onProceed,
+  onSkip,
+}: {
+  item: QueueItem;
+  onProceed: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div className="mt-2">
+      <WarningBox>
+        <span className="text-white">{item.name}</span> already has a photo — this will replace their current
+        version.
+      </WarningBox>
+      <div className="mt-2 flex items-center gap-4">
+        {item.existingThumbUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.existingThumbUrl} alt={item.name} className="h-12 w-12 rounded-full object-cover" />
+        )}
+        <div className="flex gap-2">
+          <button onClick={onProceed} className="rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white">
+            Replace anyway
+          </button>
+          <button onClick={onSkip} className="rounded-md border border-[#2a1e42] px-3 py-1.5 text-xs text-white">
+            Skip
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -763,23 +908,83 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
           onClick={() => setViewing(false)}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
         >
-          <div onClick={(e) => e.stopPropagation()} className="max-w-lg">
+          <div onClick={(e) => e.stopPropagation()} className="relative max-w-lg">
+            <button
+              onClick={() => setViewing(false)}
+              aria-label="Close"
+              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#16112c] text-white hover:bg-[#2a1e42]"
+            >
+              ✕
+            </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={hit.thumbUrl} alt={hit.matchedName} className="max-h-[70vh] w-full rounded-lg object-contain" />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-              <div className="flex gap-3">
-                <a href={hit.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                  Download
-                </a>
-                <button onClick={() => setViewing(false)} className="font-mono text-xs text-[#8b7ba8] hover:text-white">
-                  Close
-                </button>
-              </div>
+              <a href={hit.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                Download
+              </a>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function HarmonicFoundCard({
+  hit,
+  onResolved,
+  onDiscarded,
+}: {
+  hit: LookupHit;
+  onResolved: (resolved: { guardianId: string; matchedName: string; updatedAt: string; thumbUrl: string }) => void;
+  onDiscarded: () => void;
+}) {
+  const [previewBase64, setPreviewBase64] = useState(hit.resultBase64!);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="rounded-lg border border-[#2a1e42] p-4">
+      <p className="text-sm font-medium text-white">{hit.matchedName}</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">via harmonic</p>
+      <PreviewApprove
+        previewBase64={previewBase64}
+        onApprove={async () => {
+          setBusy(true);
+          try {
+            const res = await fetch("/api/guardians/approve", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: hit.matchedName,
+                resultBase64: previewBase64,
+                rawBase64: hit.rawBase64,
+                attioId: hit.attioId,
+              }),
+            });
+            const data = await res.json();
+            onResolved({
+              guardianId: data.guardianId,
+              matchedName: hit.matchedName!,
+              updatedAt: new Date().toISOString(),
+              thumbUrl: `data:image/png;base64,${previewBase64}`,
+            });
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onDiscard={onDiscarded}
+        onRefine={async (instruction) => {
+          const res = await fetch("/api/guardians/edit-preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: previewBase64, instruction }),
+          });
+          const data = await res.json();
+          if (data.resultBase64) setPreviewBase64(data.resultBase64);
+        }}
+      />
+      {busy && <p className="mt-2 text-xs text-[#6b5f8a]">Saving…</p>}
     </div>
   );
 }
