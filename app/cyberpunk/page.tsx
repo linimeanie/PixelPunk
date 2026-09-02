@@ -268,12 +268,21 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           setDragOver(false);
           if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center text-sm transition ${
+        className={`flex min-h-64 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16 text-center text-sm transition ${
           dragOver ? "border-[#d4367a] bg-[#1a1030]" : "border-[#2a1e42] text-[#8b7ba8]"
         }`}
       >
-        <p className="font-medium text-white">Drop raw photos here, or click to choose files</p>
-        <p className="mt-1 text-xs text-[#6b5f8a]">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-[#6b5f8a]">
+          <path
+            d="M12 15V3m0 0L7 8m5-5l5 5M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <p className="text-base font-medium text-white">Drop raw photos here, or click to choose files</p>
+        <p className="mt-1 max-w-md text-xs text-[#6b5f8a]">
           Name each photo after the guardian (e.g. &ldquo;Jane Doe.jpg&rdquo;) — or drop a .csv / .txt of names to check
           status, no files needed.
         </p>
