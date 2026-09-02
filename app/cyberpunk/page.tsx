@@ -20,6 +20,19 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+// Guards against burning a generation call on a garbled filename (phone
+// export IDs, "IMG_1234", timestamps, etc.) — anything that doesn't look
+// like a plausible person's name gets flagged for confirmation instead of
+// silently processed.
+function looksLikePersonName(name: string): boolean {
+  const letters = name.replace(/[^a-zA-ZÀ-ÿ]/g, "");
+  if (letters.length < 2) return false;
+  const digitRatio = (name.match(/\d/g) ?? []).length / name.length;
+  if (digitRatio > 0.3) return false;
+  if (/^(img|dsc|photo|image|screenshot|whatsapp|pxl|copy of)[\s_-]?\d*$/i.test(name.trim())) return false;
+  return true;
+}
+
 // Proper CSV parsing (quoted-field aware) that only pulls the identifying
 // name column — a roster with "Name, Job Title, Country, ..." columns
 // should not turn "Job Title" or "Germany" into names to look up.
@@ -284,7 +297,7 @@ type QueueItem = {
   key: string;
   name: string;
   file: File;
-  status: "queued" | "processing" | "preview" | "approved" | "error";
+  status: "needs_review" | "queued" | "processing" | "preview" | "approved" | "error";
   previewBase64?: string;
   rawBase64?: string;
   error?: string;
@@ -310,14 +323,21 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
     if (imageFiles.length > 0) {
       setQueue((q) => [
         ...q,
-        ...imageFiles.map((file) => ({
-          key: `${file.name}-${file.lastModified}-${Math.random()}`,
-          name: file.name.replace(/\.[^.]+$/, ""),
-          file,
-          status: "queued" as const,
-        })),
+        ...imageFiles.map((file) => {
+          const name = file.name.replace(/\.[^.]+$/, "");
+          return {
+            key: `${file.name}-${file.lastModified}-${Math.random()}`,
+            name,
+            file,
+            status: (looksLikePersonName(name) ? "queued" : "needs_review") as QueueItem["status"],
+          };
+        }),
       ]);
     }
+  }
+
+  function confirmName(item: QueueItem, name: string) {
+    setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, name, status: "queued" } : i)));
   }
 
   useEffect(() => {
@@ -401,6 +421,11 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           Name each photo after the guardian (e.g. &ldquo;Jane Doe.jpg&rdquo;) — or drop a .csv / .txt of names to check
           status, no files needed.
         </p>
+        <p className="max-w-md text-xs text-[#ff6b8f]">
+          Get the filename right — a wrong or garbled name creates a duplicate record or an unfindable one, and
+          wastes a generation. Anything that doesn&rsquo;t look like a real name gets flagged below for you to
+          confirm before it&rsquo;s processed.
+        </p>
         <input
           ref={inputRef}
           type="file"
@@ -430,6 +455,9 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
                     Remove
                   </button>
                 </div>
+                {item.status === "needs_review" && (
+                  <NeedsReviewRow item={item} onConfirm={(name) => confirmName(item, name)} />
+                )}
                 {item.status === "queued" && <p className="mt-1 text-xs text-[#6b5f8a]">Queued…</p>}
                 {item.status === "processing" && <p className="mt-1 text-xs text-[#6b5f8a]">Generating…</p>}
                 {item.status === "error" && <p className="mt-1 text-xs text-[#ff6b8f]">{item.error}</p>}
@@ -458,6 +486,34 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
             ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function NeedsReviewRow({ item, onConfirm }: { item: QueueItem; onConfirm: (name: string) => void }) {
+  const [name, setName] = useState(item.name);
+
+  return (
+    <div className="mt-2 rounded-md border border-[#ff6b8f]/40 bg-[#2a1215] p-3">
+      <p className="text-xs text-[#ff6b8f]">
+        &ldquo;{item.file.name}&rdquo; doesn&rsquo;t look like a guardian&rsquo;s name — confirm or correct it before
+        this gets processed, so we don&rsquo;t waste a generation on the wrong identity.
+      </p>
+      <div className="mt-2 flex gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="flex-1 rounded-md border border-[#2a1e42] bg-[#0f0a1f] px-3 py-2 text-sm text-white focus:border-[#d4367a] focus:outline-none"
+        />
+        <button
+          onClick={() => onConfirm(name)}
+          disabled={!name.trim()}
+          className="rounded-md bg-[#d4367a] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+        >
+          Looks good — process
+        </button>
+      </div>
     </div>
   );
 }
@@ -734,19 +790,25 @@ function MissingCard({ name }: { name: string }) {
       <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">no picture on file</p>
 
       {!previewBase64 ? (
-        <label className="mt-3 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a1e42] py-6 text-xs text-[#8b7ba8] hover:border-[#d4367a]">
-          {busy ? "Generating…" : "Upload raw photo"}
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={busy}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) generate(f);
-            }}
-          />
-        </label>
+        <>
+          <p className="mt-2 text-xs text-[#6b5f8a]">
+            This will be saved as <span className="text-white">{name}</span> regardless of the file&rsquo;s own
+            name — just make sure the photo is really of them.
+          </p>
+          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a1e42] py-6 text-xs text-[#8b7ba8] hover:border-[#d4367a]">
+            {busy ? "Generating…" : "Upload raw photo"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={busy}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) generate(f);
+              }}
+            />
+          </label>
+        </>
       ) : (
         <PreviewApprove
           previewBase64={previewBase64}
