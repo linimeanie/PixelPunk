@@ -794,10 +794,6 @@ function MissingCard({ name }: { name: string }) {
 
       {!previewBase64 ? (
         <>
-          <WarningBox>
-            Saved as <span className="text-white">{name}</span> no matter what the file is called — just make sure
-            it&rsquo;s really a photo of them.
-          </WarningBox>
           <label className="mt-2 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a1e42] py-6 text-xs text-[#8b7ba8] hover:border-[#d4367a]">
             {busy ? "Generating…" : "Upload raw photo"}
             <input
