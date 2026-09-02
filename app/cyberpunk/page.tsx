@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 type LookupHit = {
   queried: string;
@@ -421,11 +421,6 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           Name each photo after the guardian (e.g. &ldquo;Jane Doe.jpg&rdquo;) — or drop a .csv / .txt of names to check
           status, no files needed.
         </p>
-        <p className="max-w-md text-xs text-[#ff6b8f]">
-          Get the filename right — a wrong or garbled name creates a duplicate record or an unfindable one, and
-          wastes a generation. Anything that doesn&rsquo;t look like a real name gets flagged below for you to
-          confirm before it&rsquo;s processed.
-        </p>
         <input
           ref={inputRef}
           type="file"
@@ -438,6 +433,8 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           }}
         />
       </label>
+
+      <WarningBox>Name files exactly as the guardian — wrong names make duplicates and waste a generation.</WarningBox>
 
       {queuedCount > 0 && (
         <p className="mt-2 font-mono text-xs text-[#6b5f8a]">Processing {queuedCount} remaining…</p>
@@ -490,15 +487,21 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
   );
 }
 
+function WarningBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-2 flex items-start gap-2 rounded-md border border-[#ff6b8f]/40 bg-[#2a1215] px-3 py-2 text-xs text-[#ff6b8f]">
+      <span>⚠️</span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
 function NeedsReviewRow({ item, onConfirm }: { item: QueueItem; onConfirm: (name: string) => void }) {
   const [name, setName] = useState(item.name);
 
   return (
-    <div className="mt-2 rounded-md border border-[#ff6b8f]/40 bg-[#2a1215] p-3">
-      <p className="text-xs text-[#ff6b8f]">
-        &ldquo;{item.file.name}&rdquo; doesn&rsquo;t look like a guardian&rsquo;s name — confirm or correct it before
-        this gets processed, so we don&rsquo;t waste a generation on the wrong identity.
-      </p>
+    <div className="mt-2">
+      <WarningBox>&ldquo;{item.file.name}&rdquo; doesn&rsquo;t look like a name — confirm before processing.</WarningBox>
       <div className="mt-2 flex gap-2">
         <input
           type="text"
@@ -791,10 +794,10 @@ function MissingCard({ name }: { name: string }) {
 
       {!previewBase64 ? (
         <>
-          <p className="mt-2 text-xs text-[#6b5f8a]">
-            This will be saved as <span className="text-white">{name}</span> regardless of the file&rsquo;s own
-            name — just make sure the photo is really of them.
-          </p>
+          <WarningBox>
+            Saved as <span className="text-white">{name}</span> no matter what the file is called — just make sure
+            it&rsquo;s really a photo of them.
+          </WarningBox>
           <label className="mt-2 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a1e42] py-6 text-xs text-[#8b7ba8] hover:border-[#d4367a]">
             {busy ? "Generating…" : "Upload raw photo"}
             <input
