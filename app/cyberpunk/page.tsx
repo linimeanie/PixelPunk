@@ -21,10 +21,40 @@ async function urlToBase64(url: string): Promise<string> {
   return btoa(new Uint8Array(buf).reduce((s, b) => s + String.fromCharCode(b), ""));
 }
 
+type Suggestion = { id: string; name: string; thumbUrl: string | null };
+
 export default function CyberpunkModule() {
   const [lookupInput, setLookupInput] = useState("");
   const [lookupResults, setLookupResults] = useState<LookupHit[] | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+
+  // Live suggestions while typing a single name (no comma/newline yet) —
+  // matches anywhere in the full name, so both first and last names work.
+  useEffect(() => {
+    const isSingleTerm = lookupInput.trim() && !/[,\n]/.test(lookupInput);
+    if (!isSingleTerm || lookupResults !== null) {
+      setSuggestions([]);
+      return;
+    }
+    const controller = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/guardians/search?q=${encodeURIComponent(lookupInput.trim())}`, { signal: controller.signal })
+        .then((r) => r.json())
+        .then((data) => setSuggestions((data.results ?? []).slice(0, 8)))
+        .catch(() => {});
+    }, 150);
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [lookupInput, lookupResults]);
+
+  function pickSuggestion(s: Suggestion) {
+    setLookupInput(s.name);
+    setSuggestions([]);
+    setLookupResults([{ queried: s.name, bucket: "has_result", guardianId: s.id, matchedName: s.name, thumbUrl: s.thumbUrl }]);
+  }
 
   async function runLookup(namesOverride?: string[]) {
     const names = namesOverride ?? parseNames(lookupInput);
@@ -88,34 +118,57 @@ export default function CyberpunkModule() {
       </p>
       <h1 className="mt-2 text-3xl font-semibold text-white">Cyberpunk</h1>
 
-      <div className="mt-6 rounded-lg border border-[#2a1e42] bg-[#16112c] p-3">
-        <textarea
-          value={lookupInput}
-          onChange={(e) => setLookupInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              runLookup();
-            }
-          }}
-          placeholder="Type or paste one or more names, separated by commas or new lines…"
-          rows={2}
-          className="w-full resize-none bg-transparent text-sm text-white placeholder:text-[#6b5f8a] focus:outline-none"
-        />
-        <div className="mt-2 flex justify-end gap-2">
-          {lookupResults !== null && (
-            <button onClick={clearLookup} className="rounded-md px-3 py-1.5 font-mono text-xs text-[#8b7ba8] hover:text-white">
-              Clear
+      <div className="relative mt-6">
+        <div className="rounded-lg border border-[#2a1e42] bg-[#16112c] p-3">
+          <textarea
+            value={lookupInput}
+            onChange={(e) => setLookupInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (suggestions.length > 0) pickSuggestion(suggestions[0]);
+                else runLookup();
+              }
+            }}
+            placeholder="Type or paste one or more names, separated by commas or new lines…"
+            rows={2}
+            className="w-full resize-none bg-transparent text-sm text-white placeholder:text-[#6b5f8a] focus:outline-none"
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            {lookupResults !== null && (
+              <button onClick={clearLookup} className="rounded-md px-3 py-1.5 font-mono text-xs text-[#8b7ba8] hover:text-white">
+                Clear
+              </button>
+            )}
+            <button
+              onClick={() => runLookup()}
+              disabled={lookingUp || !lookupInput.trim()}
+              className="rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#e0447f] disabled:opacity-50"
+            >
+              {lookingUp ? "Searching…" : "Search"}
             </button>
-          )}
-          <button
-            onClick={() => runLookup()}
-            disabled={lookingUp || !lookupInput.trim()}
-            className="rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#e0447f] disabled:opacity-50"
-          >
-            {lookingUp ? "Searching…" : "Search"}
-          </button>
+          </div>
         </div>
+
+        {suggestions.length > 0 && (
+          <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-[#2a1e42] bg-[#16112c] shadow-lg">
+            {suggestions.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => pickSuggestion(s)}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#1a1030]"
+              >
+                {s.thumbUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.thumbUrl} alt={s.name} className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <div className="h-8 w-8 rounded-full bg-[#2a1e42]" />
+                )}
+                <span className="text-sm text-white">{s.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <UploadZone onNamesFromCsv={(names) => runLookup(names)} />

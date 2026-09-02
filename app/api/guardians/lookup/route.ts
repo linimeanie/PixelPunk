@@ -17,12 +17,24 @@ export async function POST(req: NextRequest) {
 
   const results = await Promise.all(
     cleaned.map(async (name) => {
-      const { data } = await supabase
+      // Exact match first (precise for CSV/roster reconciliation), then
+      // fall back to a substring match so a first name or partial name
+      // still finds someone.
+      let { data } = await supabase
         .from("guardians")
         .select("id,name,status,guardian_versions(result_path,is_current)")
         .eq("guardian_versions.is_current", true)
         .ilike("name", name)
         .limit(1);
+
+      if (!data || data.length === 0) {
+        ({ data } = await supabase
+          .from("guardians")
+          .select("id,name,status,guardian_versions(result_path,is_current)")
+          .eq("guardian_versions.is_current", true)
+          .ilike("name", `%${name}%`)
+          .limit(1));
+      }
 
       const match = data?.[0];
       const currentPath = match?.guardian_versions?.[0]?.result_path;
