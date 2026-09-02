@@ -14,7 +14,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Retrofit — Cyberpunk & Logo Hub",
+  title: "Pixelpunk — Cyberpunk & Logo Hub",
   description: "Deep Tech Momentum internal tool for guardian portraits and partner logos.",
 };
 
