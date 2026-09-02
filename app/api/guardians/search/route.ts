@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
         id: row.id,
         name: row.name,
         status: row.status,
+        updatedAt: row.updated_at,
         thumbUrl,
       };
     })
