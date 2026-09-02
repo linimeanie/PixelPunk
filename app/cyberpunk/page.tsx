@@ -601,6 +601,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
   const [previewBase64, setPreviewBase64] = useState<string | null>(null);
   const [rawBase64, setRawBase64] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [viewing, setViewing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function askForChange() {
@@ -679,9 +680,14 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
         </div>
         <div className="flex items-center divide-x divide-[#2a1e42]">
           {hit.thumbUrl && (
-            <a href={hit.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-              Download
-            </a>
+            <>
+              <button onClick={() => setViewing(true)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                View
+              </button>
+              <a href={hit.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                Download
+              </a>
+            </>
           )}
           <button onClick={() => setMode(mode === "edit" ? null : "edit")} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
             Ask for a change
@@ -748,6 +754,29 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
             >
               Discard
             </button>
+          </div>
+        </div>
+      )}
+
+      {viewing && hit.thumbUrl && (
+        <div
+          onClick={() => setViewing(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
+        >
+          <div onClick={(e) => e.stopPropagation()} className="max-w-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={hit.thumbUrl} alt={hit.matchedName} className="max-h-[70vh] w-full rounded-lg object-contain" />
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-sm font-medium text-white">{hit.matchedName}</p>
+              <div className="flex gap-3">
+                <a href={hit.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                  Download
+                </a>
+                <button onClick={() => setViewing(false)} className="font-mono text-xs text-[#8b7ba8] hover:text-white">
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
