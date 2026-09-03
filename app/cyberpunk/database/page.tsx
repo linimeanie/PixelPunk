@@ -118,7 +118,7 @@ export default function CyberpunkDatabase() {
         {!loading && results.length === 0 && (
           <p className="p-4 text-sm text-[#6e6c74]">No records{query ? ` for "${query}"` : ""}.</p>
         )}
-        {results.map((r) => (
+        {!loading && results.map((r) => (
           <div key={r.id} className="flex items-center gap-4 p-4">
             <input
               type="checkbox"
