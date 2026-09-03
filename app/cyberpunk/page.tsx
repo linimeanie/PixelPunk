@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { formatWhen } from "@/lib/format";
 
 type LookupHit = {
   queried: string;
@@ -17,10 +18,6 @@ type LookupHit = {
 
 function parseNames(raw: string): string[] {
   return [...new Set(raw.split(/[,\n]/).map((n) => n.trim()).filter(Boolean))];
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
 // Guards against burning a generation call on a garbled filename (phone
@@ -116,7 +113,7 @@ export default function CyberpunkModule() {
     const t = setTimeout(() => {
       fetch(`/api/guardians/search?q=${encodeURIComponent(lookupInput.trim())}`, { signal: controller.signal })
         .then((r) => r.json())
-        .then((data) => setSuggestions((data.results ?? []).slice(0, 8)))
+        .then((data) => setSuggestions((data.results ?? []).slice(0, 30)))
         .catch(() => {});
     }, 150);
     return () => {
@@ -241,7 +238,7 @@ export default function CyberpunkModule() {
         </div>
 
         {suggestions.length > 0 && (
-          <div className="absolute inset-x-0 top-full z-10 mt-1 overflow-hidden rounded-lg border border-[#2a1e42] bg-[#16112c] shadow-lg">
+          <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[#2a1e42] bg-[#16112c] shadow-lg">
             {suggestions.map((s) => (
               <button
                 key={s.id}
@@ -820,7 +817,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
         <div className="flex-1">
           <p className="text-sm font-medium text-white">{hit.matchedName}</p>
           <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
-            {hit.updatedAt ? formatDate(hit.updatedAt) : ""}
+            {hit.updatedAt ? formatWhen(hit.updatedAt) : ""}
           </p>
         </div>
         <div className="flex items-center divide-x divide-[#2a1e42]">

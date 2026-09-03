@@ -2,12 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { formatWhen } from "@/lib/format";
 
 type Result = { id: string; name: string; status: string; updatedAt: string; thumbUrl: string | null };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
 
 export default function CyberpunkDatabase() {
   const [query, setQuery] = useState("");
@@ -138,7 +135,7 @@ export default function CyberpunkDatabase() {
             <div className="flex-1">
               <p className="text-sm font-medium text-white">{r.name}</p>
               <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
-                {formatDate(r.updatedAt)}
+                {formatWhen(r.updatedAt)}
               </p>
             </div>
             <div className="flex items-center divide-x divide-[#2a1e42]">
