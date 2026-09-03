@@ -6,7 +6,7 @@ export async function findGuardianByName(name: string) {
   const supabase = supabaseAdmin();
   const { data } = await supabase
     .from("guardians")
-    .select("id,name")
+    .select("id,name,guardian_badge")
     .ilike("name", name)
     .limit(1);
   return data?.[0] ?? null;
@@ -37,7 +37,7 @@ export async function commitGuardianVersion({
     const { data, error } = await supabase
       .from("guardians")
       .insert({ name, status: "has_result", source, attio_id: attioId })
-      .select("id,name")
+      .select("id,name,guardian_badge")
       .single();
     if (error) throw new Error(error.message);
     guardian = data;
@@ -81,15 +81,20 @@ export async function commitGuardianVersion({
   if (versionErr) throw new Error(versionErr.message);
 
   // Best-effort: label the guardian with their confirmed edition right
-  // away. A failed or ambiguous lookup should never block saving the
-  // photo, so this never throws into the caller.
+  // away. Only ever upgrades (null -> '26'/'27', or '26' -> '27') — never
+  // clears an existing badge, since a stale or ambiguous Attio lookup
+  // (or a person genuinely not confirmed right now) shouldn't erase a
+  // badge that was already set. A failed lookup never blocks the save.
   try {
     const attioCheck = await checkAttioGuardianBadge(name);
     if (attioCheck) {
-      await supabase
-        .from("guardians")
-        .update({ attio_id: attioCheck.attioId, guardian_badge: attioCheck.badge })
-        .eq("id", guardian.id);
+      const updates: { attio_id: string; guardian_badge?: "26" | "27" } = { attio_id: attioCheck.attioId };
+      if (attioCheck.badge === "27") {
+        updates.guardian_badge = "27";
+      } else if (attioCheck.badge === "26" && !guardian.guardian_badge) {
+        updates.guardian_badge = "26";
+      }
+      await supabase.from("guardians").update(updates).eq("id", guardian.id);
     }
   } catch {
     // ignore — badge stays whatever it was
