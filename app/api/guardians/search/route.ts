@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from("guardians")
     .select(
-      "id,name,status,updated_at,guardian_versions(result_path,is_current)"
+      "id,name,status,updated_at,guardian_badge,guardian_versions(result_path,is_current)"
     )
     .eq("guardian_versions.is_current", true)
     .order("updated_at", { ascending: false })
@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
         name: row.name,
         status: row.status,
         updatedAt: row.updated_at,
+        guardianBadge: row.guardian_badge,
         thumbUrl,
       };
     })

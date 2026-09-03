@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatWhen } from "@/lib/format";
 
-type Result = { id: string; name: string; status: string; updatedAt: string; thumbUrl: string | null };
+type Result = {
+  id: string;
+  name: string;
+  status: string;
+  updatedAt: string;
+  thumbUrl: string | null;
+  guardianBadge: "26" | "27" | null;
+};
 
 export default function CyberpunkDatabase() {
   const [query, setQuery] = useState("");
@@ -133,7 +140,10 @@ export default function CyberpunkDatabase() {
               <div className="h-12 w-12 rounded-full bg-[#2a1e42]" />
             )}
             <div className="flex-1">
-              <p className="text-sm font-medium text-white">{r.name}</p>
+              <p className="text-sm font-medium text-white">
+                {r.name}
+                {r.guardianBadge && <span className="ml-2">🛡️ '{r.guardianBadge}</span>}
+              </p>
               <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
                 {formatWhen(r.updatedAt)}
               </p>

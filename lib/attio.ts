@@ -45,3 +45,51 @@ export async function findGuardianInAttio(name: string): Promise<AttioMatch | nu
     avatarUrl: v.avatar_url?.[0]?.value ?? null,
   };
 }
+
+function statusOptionTitle(entryValues: any, slug: string): string | null {
+  return entryValues[slug]?.[0]?.option?.title ?? null;
+}
+
+// '27 takes priority over '26 when both are confirmed — a person guardian
+// at DTM26 who has since reconfirmed for DTM27 is shown as this year's.
+export function guardianBadgeFromStatus(dtm26Status: string | null, dtm27Status: string | null): "26" | "27" | null {
+  const dtm27Confirmed = dtm27Status === "Confirmed" || dtm27Status === "DTM27 confirmed - reconfirmation needed";
+  if (dtm27Confirmed) return "27";
+  if (dtm26Status === "Confirmed") return "26";
+  return null;
+}
+
+// Looks up this person's entry on the all_guardians list to read their
+// per-edition confirmation status, and derives the '26/'27 badge from it.
+export async function getGuardianBadge(attioPersonId: string): Promise<"26" | "27" | null> {
+  const key = process.env.ATTIO_API_KEY;
+  if (!key) return null;
+
+  const res = await fetch(`${ATTIO_BASE}/lists/all_guardians/entries/query`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filter: { parent_record: { target_record_id: { "$eq": attioPersonId } } },
+      limit: 1,
+    }),
+  });
+  if (!res.ok) return null;
+
+  const json = await res.json();
+  const entry = json.data?.[0];
+  if (!entry) return null;
+
+  const dtm26 = statusOptionTitle(entry.entry_values, "dtm26_status");
+  const dtm27 = statusOptionTitle(entry.entry_values, "dtm27_status");
+  return guardianBadgeFromStatus(dtm26, dtm27);
+}
+
+// Finds the guardian in Attio by name and reads their confirmed-edition
+// badge in one call. Used right after a photo is committed so newly
+// added guardians get labelled immediately, without a separate sync step.
+export async function checkAttioGuardianBadge(name: string): Promise<{ attioId: string; badge: "26" | "27" | null } | null> {
+  const match = await findGuardianInAttio(name);
+  if (!match) return null;
+  const badge = await getGuardianBadge(match.attioId);
+  return { attioId: match.attioId, badge };
+}

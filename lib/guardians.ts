@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { supabaseAdmin } from "@/lib/supabase";
+import { checkAttioGuardianBadge } from "@/lib/attio";
 
 export async function findGuardianByName(name: string) {
   const supabase = supabaseAdmin();
@@ -78,6 +79,21 @@ export async function commitGuardianVersion({
     created_by: "app",
   });
   if (versionErr) throw new Error(versionErr.message);
+
+  // Best-effort: label the guardian with their confirmed edition right
+  // away. A failed or ambiguous lookup should never block saving the
+  // photo, so this never throws into the caller.
+  try {
+    const attioCheck = await checkAttioGuardianBadge(name);
+    if (attioCheck) {
+      await supabase
+        .from("guardians")
+        .update({ attio_id: attioCheck.attioId, guardian_badge: attioCheck.badge })
+        .eq("id", guardian.id);
+    }
+  } catch {
+    // ignore — badge stays whatever it was
+  }
 
   return { guardianId: guardian.id, resultPath };
 }
