@@ -15,6 +15,7 @@ function matchRank(name: string, q: string): number {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
+  const badge = req.nextUrl.searchParams.get("badge");
   const supabase = supabaseAdmin();
 
   let query = supabase
@@ -24,10 +25,15 @@ export async function GET(req: NextRequest) {
     )
     .eq("guardian_versions.is_current", true)
     .order("updated_at", { ascending: false })
-    .limit(q ? 200 : 30);
+    .limit(q || badge ? 200 : 30);
 
   if (q) {
     query = query.ilike("name", `%${q}%`);
+  }
+  if (badge === "26" || badge === "27") {
+    query = query.eq("guardian_badge", badge);
+  } else if (badge === "none") {
+    query = query.is("guardian_badge", null);
   }
 
   const { data, error } = await query;

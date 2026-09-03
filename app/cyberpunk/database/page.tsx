@@ -13,8 +13,25 @@ type Result = {
   guardianBadge: "26" | "27" | null;
 };
 
+type BadgeFilter = "all" | "26" | "27" | "none";
+
+const BADGE_FILTERS: { value: BadgeFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "27", label: "🛡️ '27" },
+  { value: "26", label: "🛡️ '26" },
+  { value: "none", label: "Unmarked" },
+];
+
+function searchUrl(query: string, badgeFilter: BadgeFilter) {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (badgeFilter !== "all") params.set("badge", badgeFilter);
+  return `/api/guardians/search?${params.toString()}`;
+}
+
 export default function CyberpunkDatabase() {
   const [query, setQuery] = useState("");
+  const [badgeFilter, setBadgeFilter] = useState<BadgeFilter>("all");
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -22,7 +39,7 @@ export default function CyberpunkDatabase() {
 
   function reload() {
     setLoading(true);
-    fetch(`/api/guardians/search?q=${encodeURIComponent(query)}`)
+    fetch(searchUrl(query, badgeFilter))
       .then((r) => r.json())
       .then((data) => setResults(data.results ?? []))
       .catch(() => {})
@@ -33,7 +50,7 @@ export default function CyberpunkDatabase() {
     const controller = new AbortController();
     setLoading(true);
     const t = setTimeout(() => {
-      fetch(`/api/guardians/search?q=${encodeURIComponent(query)}`, { signal: controller.signal })
+      fetch(searchUrl(query, badgeFilter), { signal: controller.signal })
         .then((r) => r.json())
         .then((data) => {
           setResults(data.results ?? []);
@@ -46,7 +63,7 @@ export default function CyberpunkDatabase() {
       clearTimeout(t);
       controller.abort();
     };
-  }, [query]);
+  }, [query, badgeFilter]);
 
   function toggle(id: string) {
     setSelected((s) => {
@@ -103,6 +120,22 @@ export default function CyberpunkDatabase() {
         className="mt-6 w-full rounded-lg border border-[#2a1e42] bg-[#16112c] px-4 py-2.5 text-sm text-white placeholder:text-[#6b5f8a] focus:border-[#d4367a] focus:outline-none"
       />
 
+      <div className="mt-3 flex gap-2">
+        {BADGE_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setBadgeFilter(f.value)}
+            className={`rounded-md border px-3 py-1.5 font-mono text-xs transition ${
+              badgeFilter === f.value
+                ? "border-[#d4367a] bg-[#1a1030] text-white"
+                : "border-[#2a1e42] text-[#8b7ba8] hover:text-white"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {selected.size > 0 && (
         <div className="mt-3 flex items-center justify-between rounded-lg border border-[#d4367a] bg-[#1a1030] px-4 py-2.5">
           <p className="text-xs text-white">{selected.size} selected</p>
@@ -123,7 +156,10 @@ export default function CyberpunkDatabase() {
       <div className="mt-4 flex flex-col divide-y divide-[#2a1e42] rounded-lg border border-[#2a1e42]">
         {loading && <p className="p-4 text-sm text-[#6b5f8a]">Loading…</p>}
         {!loading && results.length === 0 && (
-          <p className="p-4 text-sm text-[#6b5f8a]">No records{query ? ` for "${query}"` : ""}.</p>
+          <p className="p-4 text-sm text-[#6b5f8a]">
+            No records{query ? ` for "${query}"` : ""}
+            {badgeFilter !== "all" ? ` matching ${BADGE_FILTERS.find((f) => f.value === badgeFilter)?.label}` : ""}.
+          </p>
         )}
         {!loading && results.map((r) => (
           <div key={r.id} className="flex items-center gap-4 p-4">
@@ -166,7 +202,7 @@ export default function CyberpunkDatabase() {
           </div>
         ))}
       </div>
-      {!query && (
+      {!query && badgeFilter === "all" && (
         <p className="mt-4 font-mono text-xs text-[#6b5f8a]">
           Showing the 30 most recently added. Filter to find someone specific.
         </p>
