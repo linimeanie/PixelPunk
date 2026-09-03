@@ -41,6 +41,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const { count: totalGuardians } = await supabase
+    .from("guardians")
+    .select("*", { count: "exact", head: true });
+
   const ranked = q
     ? (data ?? [])
         .slice()
@@ -55,7 +59,7 @@ export async function GET(req: NextRequest) {
       if (currentPath) {
         const { data: signed } = await supabase.storage
           .from("guardian-photos")
-          .createSignedUrl(currentPath, 300);
+          .createSignedUrl(currentPath, 3600 * 24);
         thumbUrl = signed?.signedUrl ?? null;
       }
       return {
@@ -69,5 +73,5 @@ export async function GET(req: NextRequest) {
     })
   );
 
-  return NextResponse.json({ results });
+  return NextResponse.json({ results, totalGuardians: totalGuardians ?? 0 });
 }

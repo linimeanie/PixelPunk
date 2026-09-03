@@ -32,6 +32,7 @@ export default function CyberpunkDatabase() {
   const [query, setQuery] = useState("");
   const [badgeFilter, setBadgeFilter] = useState<BadgeFilter>("all");
   const [results, setResults] = useState<Result[]>([]);
+  const [totalGuardians, setTotalGuardians] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [viewing, setViewing] = useState<Result | null>(null);
@@ -40,7 +41,10 @@ export default function CyberpunkDatabase() {
     setLoading(true);
     fetch(searchUrl(query, badgeFilter))
       .then((r) => r.json())
-      .then((data) => setResults(data.results ?? []))
+      .then((data) => {
+        setResults(data.results ?? []);
+        setTotalGuardians(data.totalGuardians ?? null);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
@@ -53,6 +57,7 @@ export default function CyberpunkDatabase() {
         .then((r) => r.json())
         .then((data) => {
           setResults(data.results ?? []);
+          setTotalGuardians(data.totalGuardians ?? null);
           setSelected(new Set());
         })
         .catch(() => {})
@@ -108,7 +113,12 @@ export default function CyberpunkDatabase() {
       <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
         Guardian Portraits
       </p>
-      <h1 className="mt-2 text-3xl font-semibold text-white">Database</h1>
+      <div className="mt-2 flex items-baseline justify-between">
+        <h1 className="text-3xl font-semibold text-white">Database</h1>
+        {totalGuardians !== null && (
+          <p className="font-mono text-xs text-[#8b7ba8]">{totalGuardians} total</p>
+        )}
+      </div>
 
       <input
         type="text"

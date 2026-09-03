@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       if (match && currentPath) {
         const { data: signed } = await supabase.storage
           .from("guardian-photos")
-          .createSignedUrl(currentPath, 300);
+          .createSignedUrl(currentPath, 3600 * 24);
         return {
           queried: name,
           bucket: "has_result" as const,

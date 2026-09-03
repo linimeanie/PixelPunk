@@ -22,6 +22,6 @@ export async function GET(req: NextRequest) {
   const currentPath = match?.guardian_versions?.[0]?.result_path;
   if (!match || !currentPath) return NextResponse.json({ exists: false });
 
-  const { data: signed } = await supabase.storage.from("guardian-photos").createSignedUrl(currentPath, 300);
+  const { data: signed } = await supabase.storage.from("guardian-photos").createSignedUrl(currentPath, 3600 * 24);
   return NextResponse.json({ exists: true, guardianId: match.id, matchedName: match.name, thumbUrl: signed?.signedUrl ?? null });
 }

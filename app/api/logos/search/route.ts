@@ -31,13 +31,13 @@ export async function GET(req: NextRequest) {
       if (version?.white_transparent_path) {
         const { data: signed } = await supabase.storage
           .from("logos")
-          .createSignedUrl(version.white_transparent_path, 300);
+          .createSignedUrl(version.white_transparent_path, 3600 * 24);
         whiteUrl = signed?.signedUrl ?? null;
       }
       if (version?.original_hires_path) {
         const { data: signed } = await supabase.storage
           .from("logos")
-          .createSignedUrl(version.original_hires_path, 300);
+          .createSignedUrl(version.original_hires_path, 3600 * 24);
         hiresUrl = signed?.signedUrl ?? null;
       }
       return {
