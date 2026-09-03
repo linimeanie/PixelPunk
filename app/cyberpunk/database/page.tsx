@@ -13,13 +13,12 @@ type Result = {
   guardianBadge: "26" | "27" | null;
 };
 
-type BadgeFilter = "all" | "26" | "27" | "none";
+type BadgeFilter = "all" | "26" | "27";
 
 const BADGE_FILTERS: { value: BadgeFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "27", label: "🛡️ '27" },
   { value: "26", label: "🛡️ '26" },
-  { value: "none", label: "Unmarked" },
 ];
 
 function searchUrl(query: string, badgeFilter: BadgeFilter) {
