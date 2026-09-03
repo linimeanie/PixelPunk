@@ -190,23 +190,23 @@ export default function CyberpunkModule() {
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-16">
       <div className="flex items-center justify-between">
-        <Link href="/" className="font-mono text-xs text-[#9a98a0] hover:text-white">
+        <Link href="/" className="font-mono text-xs text-[#8b7ba8] hover:text-white">
           ← PixelPunk
         </Link>
         <Link
           href="/cyberpunk/database"
-          className="rounded-md border border-[#2a2a30] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
+          className="rounded-md border border-[#2a1e42] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
         >
           Database →
         </Link>
       </div>
-      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
         Guardian Portraits
       </p>
       <h1 className="mt-2 text-3xl font-semibold text-white">Cyberpunk</h1>
 
       <div className="relative mt-6">
-        <div className="rounded-lg border border-[#2a2a30] bg-[#131316] p-3">
+        <div className="rounded-lg border border-[#2a1e42] bg-[#16112c] p-3">
           <textarea
             value={lookupInput}
             onChange={(e) => setLookupInput(e.target.value)}
@@ -219,11 +219,11 @@ export default function CyberpunkModule() {
             }}
             placeholder="Type or paste one or more names, separated by commas or new lines…"
             rows={2}
-            className="w-full resize-none bg-transparent text-sm text-white placeholder:text-[#6e6c74] focus:outline-none"
+            className="w-full resize-none bg-transparent text-sm text-white placeholder:text-[#6b5f8a] focus:outline-none"
           />
           <div className="mt-2 flex justify-end gap-2">
             {lookupResults !== null && (
-              <button onClick={clearLookup} className="rounded-md px-3 py-1.5 font-mono text-xs text-[#9a98a0] hover:text-white">
+              <button onClick={clearLookup} className="rounded-md px-3 py-1.5 font-mono text-xs text-[#8b7ba8] hover:text-white">
                 Clear
               </button>
             )}
@@ -238,18 +238,18 @@ export default function CyberpunkModule() {
         </div>
 
         {suggestions.length > 0 && (
-          <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[#2a2a30] bg-[#131316] shadow-lg">
+          <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[#2a1e42] bg-[#16112c] shadow-lg">
             {suggestions.map((s) => (
               <button
                 key={s.id}
                 onClick={() => pickSuggestion(s)}
-                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#1c1c20]"
+                className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#1a1030]"
               >
                 {s.thumbUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.thumbUrl} alt={s.name} className="h-8 w-8 rounded-full object-cover" />
                 ) : (
-                  <div className="h-8 w-8 rounded-full bg-[#2a2a30]" />
+                  <div className="h-8 w-8 rounded-full bg-[#2a1e42]" />
                 )}
                 <span className="text-sm text-white">{s.name}</span>
               </button>
@@ -265,13 +265,13 @@ export default function CyberpunkModule() {
           {found.length > 0 && (
             <div>
               <div className="flex items-center justify-between">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
                   {found.length} found
                 </p>
                 {found.length > 1 && (
                   <button
                     onClick={downloadZip}
-                    className="rounded-md border border-[#2a2a30] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
+                    className="rounded-md border border-[#2a1e42] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
                   >
                     Download all (.zip)
                   </button>
@@ -287,10 +287,10 @@ export default function CyberpunkModule() {
 
           {harmonicFound.length > 0 && (
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
                 {harmonicFound.length} found via Harmonic
               </p>
-              <p className="mt-1 text-xs text-[#6e6c74]">
+              <p className="mt-1 text-xs text-[#6b5f8a]">
                 Not in our database, but Harmonic had a photo — already cyberpunked below. Confirm it&rsquo;s really
                 them before adding.
               </p>
@@ -316,10 +316,10 @@ export default function CyberpunkModule() {
 
           {missing.length > 0 && (
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
                 {missing.length} with no picture on file
               </p>
-              <p className="mt-1 text-xs text-[#6e6c74]">
+              <p className="mt-1 text-xs text-[#6b5f8a]">
                 Upload a raw photo for each to generate their cyberpunk portrait.
               </p>
               <div className="mt-2 flex flex-col gap-3">
@@ -481,10 +481,10 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
         }}
         className={`flex min-h-64 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-16 text-center text-sm transition ${
-          dragOver ? "border-[#d4367a] bg-[#1c1c20]" : "border-[#2a2a30] text-[#9a98a0]"
+          dragOver ? "border-[#d4367a] bg-[#1a1030]" : "border-[#2a1e42] text-[#8b7ba8]"
         }`}
       >
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-[#6e6c74]">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-[#6b5f8a]">
           <path
             d="M12 15V3m0 0L7 8m5-5l5 5M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"
             stroke="currentColor"
@@ -494,7 +494,7 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           />
         </svg>
         <p className="text-base font-medium text-white">Drop raw photos here, or click to choose files</p>
-        <p className="mt-1 max-w-md text-xs text-[#6e6c74]">
+        <p className="mt-1 max-w-md text-xs text-[#6b5f8a]">
           Name each photo after the guardian (e.g. &ldquo;Jane Doe.jpg&rdquo;) — or drop a .csv / .txt of names to check
           status, no files needed.
         </p>
@@ -514,7 +514,7 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
       <WarningBox>Name files exactly as the guardian — wrong names make duplicates and waste a generation.</WarningBox>
 
       {queuedCount > 0 && (
-        <p className="mt-2 font-mono text-xs text-[#6e6c74]">Processing {queuedCount} remaining…</p>
+        <p className="mt-2 font-mono text-xs text-[#6b5f8a]">Processing {queuedCount} remaining…</p>
       )}
 
       {queue.filter((i) => i.status !== "approved").length > 0 && (
@@ -522,10 +522,10 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
           {queue
             .filter((i) => i.status !== "approved")
             .map((item) => (
-              <div key={item.key} className="rounded-lg border border-[#2a2a30] p-4">
+              <div key={item.key} className="rounded-lg border border-[#2a1e42] p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-white">{item.name}</p>
-                  <button onClick={() => discard(item)} className="font-mono text-xs text-[#9a98a0] hover:text-white">
+                  <button onClick={() => discard(item)} className="font-mono text-xs text-[#8b7ba8] hover:text-white">
                     Remove
                   </button>
                 </div>
@@ -535,8 +535,8 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
                 {item.status === "duplicate_review" && (
                   <DuplicateReviewRow item={item} onProceed={() => proceedAnyway(item)} onSkip={() => discard(item)} />
                 )}
-                {item.status === "queued" && <p className="mt-1 text-xs text-[#6e6c74]">Queued…</p>}
-                {item.status === "processing" && <p className="mt-1 text-xs text-[#6e6c74]">Generating…</p>}
+                {item.status === "queued" && <p className="mt-1 text-xs text-[#6b5f8a]">Queued…</p>}
+                {item.status === "processing" && <p className="mt-1 text-xs text-[#6b5f8a]">Generating…</p>}
                 {item.status === "error" && <p className="mt-1 text-xs text-[#ff6b8f]">{item.error}</p>}
                 {item.status === "preview" && item.previewBase64 && (
                   <PreviewApprove
@@ -567,19 +567,19 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
       {approvedItems.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center justify-between">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
               {approvedItems.length} retrofied
             </p>
             {approvedItems.length > 1 && (
               <button
                 onClick={downloadApprovedZip}
-                className="rounded-md border border-[#2a2a30] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
+                className="rounded-md border border-[#2a1e42] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
               >
                 Download all (.zip)
               </button>
             )}
           </div>
-          <div className="mt-2 flex flex-col divide-y divide-[#2a2a30] rounded-lg border border-[#2a2a30]">
+          <div className="mt-2 flex flex-col divide-y divide-[#2a1e42] rounded-lg border border-[#2a1e42]">
             {approvedItems.map((item) => (
               <div key={item.key} className="flex items-center gap-4 p-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -592,7 +592,7 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
                 <a
                   href={`data:image/png;base64,${item.previewBase64}`}
                   download={`${item.name}.png`}
-                  className="font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]"
+                  className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
                 >
                   Download
                 </a>
@@ -638,7 +638,7 @@ function DuplicateReviewRow({
           <button onClick={onProceed} className="rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white">
             Replace anyway
           </button>
-          <button onClick={onSkip} className="rounded-md border border-[#2a2a30] px-3 py-1.5 text-xs text-white">
+          <button onClick={onSkip} className="rounded-md border border-[#2a1e42] px-3 py-1.5 text-xs text-white">
             Skip
           </button>
         </div>
@@ -658,7 +658,7 @@ function NeedsReviewRow({ item, onConfirm }: { item: QueueItem; onConfirm: (name
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="flex-1 rounded-md border border-[#2a2a30] bg-[#0e0e10] px-3 py-2 text-sm text-white focus:border-[#d4367a] focus:outline-none"
+          className="flex-1 rounded-md border border-[#2a1e42] bg-[#0f0a1f] px-3 py-2 text-sm text-white focus:border-[#d4367a] focus:outline-none"
         />
         <button
           onClick={() => onConfirm(name)}
@@ -696,7 +696,7 @@ function PreviewApprove({
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
           placeholder="Ask for a change (optional)"
-          className="flex-1 rounded-md border border-[#2a2a30] bg-[#0e0e10] px-3 py-2 text-sm text-white placeholder:text-[#6e6c74] focus:border-[#d4367a] focus:outline-none"
+          className="flex-1 rounded-md border border-[#2a1e42] bg-[#0f0a1f] px-3 py-2 text-sm text-white placeholder:text-[#6b5f8a] focus:border-[#d4367a] focus:outline-none"
         />
         <button
           onClick={async () => {
@@ -709,7 +709,7 @@ function PreviewApprove({
             }
           }}
           disabled={busy || !instruction.trim()}
-          className="rounded-md border border-[#2a2a30] px-3 py-2 text-xs text-white disabled:opacity-50"
+          className="rounded-md border border-[#2a1e42] px-3 py-2 text-xs text-white disabled:opacity-50"
         >
           Regenerate
         </button>
@@ -729,7 +729,7 @@ function PreviewApprove({
         >
           Add to database
         </button>
-        <button onClick={onDiscard} className="rounded-md border border-[#2a2a30] px-3 py-1.5 text-xs text-white">
+        <button onClick={onDiscard} className="rounded-md border border-[#2a1e42] px-3 py-1.5 text-xs text-white">
           Discard
         </button>
       </div>
@@ -804,7 +804,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
   }
 
   return (
-    <div className="rounded-lg border border-[#2a2a30] p-4">
+    <div className="rounded-lg border border-[#2a1e42] p-4">
       <div className="flex items-center gap-4">
         {hit.thumbUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -816,22 +816,22 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
         )}
         <div className="flex-1">
           <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
             {hit.updatedAt ? formatWhen(hit.updatedAt) : ""}
           </p>
         </div>
-        <div className="flex items-center divide-x divide-[#2a2a30]">
+        <div className="flex items-center divide-x divide-[#2a1e42]">
           {hit.thumbUrl && (
             <>
-              <button onClick={() => setViewing(true)} className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+              <button onClick={() => setViewing(true)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 View
               </button>
-              <a href={hit.thumbUrl} download className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+              <a href={hit.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </>
           )}
-          <button onClick={() => setMode(mode === "edit" ? null : "edit")} className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+          <button onClick={() => setMode(mode === "edit" ? null : "edit")} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
             Ask for a change
           </button>
           <button
@@ -839,7 +839,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
               setMode("replace");
               fileRef.current?.click();
             }}
-            className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]"
+            className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
           >
             Replace photo
           </button>
@@ -864,7 +864,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             placeholder="e.g. make the skin tone brighter"
-            className="flex-1 rounded-md border border-[#2a2a30] bg-[#0e0e10] px-3 py-2 text-sm text-white placeholder:text-[#6e6c74] focus:border-[#d4367a] focus:outline-none"
+            className="flex-1 rounded-md border border-[#2a1e42] bg-[#0f0a1f] px-3 py-2 text-sm text-white placeholder:text-[#6b5f8a] focus:border-[#d4367a] focus:outline-none"
           />
           <button
             onClick={askForChange}
@@ -877,8 +877,8 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
       )}
 
       {previewBase64 && (
-        <div className="mt-4 border-t border-[#2a2a30] pt-4">
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+        <div className="mt-4 border-t border-[#2a1e42] pt-4">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
             Preview — nothing saved until you confirm
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -892,7 +892,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
                 setPreviewBase64(null);
                 setRawBase64(null);
               }}
-              className="rounded-md border border-[#2a2a30] px-3 py-1.5 text-xs text-white"
+              className="rounded-md border border-[#2a1e42] px-3 py-1.5 text-xs text-white"
             >
               Discard
             </button>
@@ -909,7 +909,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
             <button
               onClick={() => setViewing(false)}
               aria-label="Close"
-              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#131316] text-white hover:bg-[#2a2a30]"
+              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#16112c] text-white hover:bg-[#2a1e42]"
             >
               ✕
             </button>
@@ -917,7 +917,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
             <img src={hit.thumbUrl} alt={hit.matchedName} className="max-h-[70vh] w-full rounded-lg object-contain" />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-              <a href={hit.thumbUrl} download className="font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+              <a href={hit.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </div>
@@ -941,9 +941,9 @@ function HarmonicFoundCard({
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="rounded-lg border border-[#2a2a30] p-4">
+    <div className="rounded-lg border border-[#2a1e42] p-4">
       <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-      <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">via harmonic</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">via harmonic</p>
       <PreviewApprove
         previewBase64={previewBase64}
         onApprove={async () => {
@@ -981,7 +981,7 @@ function HarmonicFoundCard({
           if (data.resultBase64) setPreviewBase64(data.resultBase64);
         }}
       />
-      {busy && <p className="mt-2 text-xs text-[#6e6c74]">Saving…</p>}
+      {busy && <p className="mt-2 text-xs text-[#6b5f8a]">Saving…</p>}
     </div>
   );
 }
@@ -1036,13 +1036,13 @@ function MissingCard({
   }
 
   return (
-    <div className="rounded-lg border border-[#2a2a30] p-4">
+    <div className="rounded-lg border border-[#2a1e42] p-4">
       <p className="text-sm font-medium text-white">{name}</p>
-      <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">no picture on file</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">no picture on file</p>
 
       {!previewBase64 ? (
         <>
-          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a2a30] py-6 text-xs text-[#9a98a0] hover:border-[#d4367a]">
+          <label className="mt-2 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a1e42] py-6 text-xs text-[#8b7ba8] hover:border-[#d4367a]">
             {busy ? "Generating…" : "Upload raw photo"}
             <input
               type="file"

@@ -36,10 +36,10 @@ export default function LogoModule() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-16">
-      <Link href="/" className="font-mono text-xs text-[#9a98a0] hover:text-white">
+      <Link href="/" className="font-mono text-xs text-[#8b7ba8] hover:text-white">
         ← PixelPunk
       </Link>
-      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
         Partner Marks
       </p>
       <h1 className="mt-2 text-3xl font-semibold text-white">Logo</h1>
@@ -50,29 +50,29 @@ export default function LogoModule() {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search a company by name…"
         autoFocus
-        className="mt-6 w-full rounded-lg border border-[#2a2a30] bg-[#131316] px-4 py-3 text-sm text-white placeholder:text-[#6e6c74] focus:border-[#d4367a] focus:outline-none"
+        className="mt-6 w-full rounded-lg border border-[#2a1e42] bg-[#16112c] px-4 py-3 text-sm text-white placeholder:text-[#6b5f8a] focus:border-[#d4367a] focus:outline-none"
       />
 
-      <div className="mt-6 flex flex-col divide-y divide-[#2a2a30] rounded-lg border border-[#2a2a30]">
-        {loading && <p className="p-4 text-sm text-[#6e6c74]">Loading…</p>}
+      <div className="mt-6 flex flex-col divide-y divide-[#2a1e42] rounded-lg border border-[#2a1e42]">
+        {loading && <p className="p-4 text-sm text-[#6b5f8a]">Loading…</p>}
         {!loading && results.length === 0 && (
-          <p className="p-4 text-sm text-[#6e6c74]">
+          <p className="p-4 text-sm text-[#6b5f8a]">
             No records{query ? ` for "${query}"` : ""}.
           </p>
         )}
         {results.map((r) => (
           <div key={r.id} className="flex items-center gap-4 p-4">
             {r.whiteUrl ? (
-              <div className="flex h-12 w-12 items-center justify-center rounded bg-[#1c1c20]">
+              <div className="flex h-12 w-12 items-center justify-center rounded bg-[#1a1030]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={r.whiteUrl} alt={r.companyName} className="max-h-8 max-w-8" />
               </div>
             ) : (
-              <div className="h-12 w-12 rounded bg-[#2a2a30]" />
+              <div className="h-12 w-12 rounded bg-[#2a1e42]" />
             )}
             <div className="flex-1">
               <p className="text-sm font-medium text-white">{r.companyName}</p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
                 {r.status.replace("_", " ")}
               </p>
             </div>
@@ -82,7 +82,7 @@ export default function LogoModule() {
                   href={r.whiteUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]"
+                  className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
                 >
                   White
                 </a>
@@ -92,7 +92,7 @@ export default function LogoModule() {
                   href={r.hiresUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]"
+                  className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]"
                 >
                   Original
                 </a>
@@ -103,7 +103,7 @@ export default function LogoModule() {
       </div>
 
       {!query && (
-        <p className="mt-4 font-mono text-xs text-[#6e6c74]">
+        <p className="mt-4 font-mono text-xs text-[#6b5f8a]">
           Showing the 30 most recently added. Search to find someone specific.
         </p>
       )}

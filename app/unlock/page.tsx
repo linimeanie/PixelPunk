@@ -32,11 +32,11 @@ function UnlockForm() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-      <p className="font-mono text-xs uppercase tracking-widest text-[#9a98a0]">
+      <p className="font-mono text-xs uppercase tracking-widest text-[#8b7ba8]">
         Deep Tech Momentum
       </p>
       <h1 className="mt-3 text-3xl font-semibold text-white">PixelPunk</h1>
-      <p className="mt-2 max-w-sm text-sm text-[#b0aeb6]">
+      <p className="mt-2 max-w-sm text-sm text-[#a89bc4]">
         Internal tool. Enter the shared admin key to continue.
       </p>
 
@@ -47,7 +47,7 @@ function UnlockForm() {
           onChange={(e) => setKey(e.target.value)}
           placeholder="Admin key"
           autoFocus
-          className="rounded-lg border border-[#2a2a30] bg-[#131316] px-4 py-3 text-sm text-white placeholder:text-[#6e6c74] focus:border-[#d4367a] focus:outline-none"
+          className="rounded-lg border border-[#2a1e42] bg-[#16112c] px-4 py-3 text-sm text-white placeholder:text-[#6b5f8a] focus:border-[#d4367a] focus:outline-none"
         />
         {error && (
           <p className="text-xs text-[#ff6b8f]">
@@ -63,7 +63,7 @@ function UnlockForm() {
         </button>
       </form>
 
-      <p className="mt-6 max-w-xs text-xs text-[#6e6c74]">
+      <p className="mt-6 max-w-xs text-xs text-[#6b5f8a]">
         One shared key for the whole internal team — no individual accounts.
       </p>
     </div>

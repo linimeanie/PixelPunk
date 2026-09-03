@@ -79,10 +79,10 @@ export default function CyberpunkDatabase() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-16">
-      <Link href="/cyberpunk" className="font-mono text-xs text-[#9a98a0] hover:text-white">
+      <Link href="/cyberpunk" className="font-mono text-xs text-[#8b7ba8] hover:text-white">
         ← Cyberpunk
       </Link>
-      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+      <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
         Guardian Portraits
       </p>
       <h1 className="mt-2 text-3xl font-semibold text-white">Database</h1>
@@ -93,14 +93,14 @@ export default function CyberpunkDatabase() {
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Filter by name…"
         autoFocus
-        className="mt-6 w-full rounded-lg border border-[#2a2a30] bg-[#131316] px-4 py-2.5 text-sm text-white placeholder:text-[#6e6c74] focus:border-[#d4367a] focus:outline-none"
+        className="mt-6 w-full rounded-lg border border-[#2a1e42] bg-[#16112c] px-4 py-2.5 text-sm text-white placeholder:text-[#6b5f8a] focus:border-[#d4367a] focus:outline-none"
       />
 
       {selected.size > 0 && (
-        <div className="mt-3 flex items-center justify-between rounded-lg border border-[#d4367a] bg-[#1c1c20] px-4 py-2.5">
+        <div className="mt-3 flex items-center justify-between rounded-lg border border-[#d4367a] bg-[#1a1030] px-4 py-2.5">
           <p className="text-xs text-white">{selected.size} selected</p>
           <div className="flex gap-3">
-            <button onClick={() => setSelected(new Set())} className="font-mono text-xs text-[#9a98a0] hover:text-white">
+            <button onClick={() => setSelected(new Set())} className="font-mono text-xs text-[#8b7ba8] hover:text-white">
               Clear
             </button>
             <button
@@ -113,10 +113,10 @@ export default function CyberpunkDatabase() {
         </div>
       )}
 
-      <div className="mt-4 flex flex-col divide-y divide-[#2a2a30] rounded-lg border border-[#2a2a30]">
-        {loading && <p className="p-4 text-sm text-[#6e6c74]">Loading…</p>}
+      <div className="mt-4 flex flex-col divide-y divide-[#2a1e42] rounded-lg border border-[#2a1e42]">
+        {loading && <p className="p-4 text-sm text-[#6b5f8a]">Loading…</p>}
         {!loading && results.length === 0 && (
-          <p className="p-4 text-sm text-[#6e6c74]">No records{query ? ` for "${query}"` : ""}.</p>
+          <p className="p-4 text-sm text-[#6b5f8a]">No records{query ? ` for "${query}"` : ""}.</p>
         )}
         {!loading && results.map((r) => (
           <div key={r.id} className="flex items-center gap-4 p-4">
@@ -130,26 +130,26 @@ export default function CyberpunkDatabase() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={r.thumbUrl} alt={r.name} className="h-12 w-12 rounded-full object-cover" />
             ) : (
-              <div className="h-12 w-12 rounded-full bg-[#2a2a30]" />
+              <div className="h-12 w-12 rounded-full bg-[#2a1e42]" />
             )}
             <div className="flex-1">
               <p className="text-sm font-medium text-white">{r.name}</p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#9a98a0]">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
                 {formatWhen(r.updatedAt)}
               </p>
             </div>
-            <div className="flex items-center divide-x divide-[#2a2a30]">
+            <div className="flex items-center divide-x divide-[#2a1e42]">
               {r.thumbUrl && (
                 <>
-                  <button onClick={() => setViewing(r)} className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+                  <button onClick={() => setViewing(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                     View
                   </button>
-                  <a href={r.thumbUrl} download className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+                  <a href={r.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                     Download
                   </a>
                 </>
               )}
-              <button onClick={() => deleteOne(r)} className="px-3 font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+              <button onClick={() => deleteOne(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Delete
               </button>
             </div>
@@ -157,7 +157,7 @@ export default function CyberpunkDatabase() {
         ))}
       </div>
       {!query && (
-        <p className="mt-4 font-mono text-xs text-[#6e6c74]">
+        <p className="mt-4 font-mono text-xs text-[#6b5f8a]">
           Showing the 30 most recently added. Filter to find someone specific.
         </p>
       )}
@@ -171,7 +171,7 @@ export default function CyberpunkDatabase() {
             <button
               onClick={() => setViewing(null)}
               aria-label="Close"
-              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#131316] text-white hover:bg-[#2a2a30]"
+              className="absolute -top-3 -right-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#16112c] text-white hover:bg-[#2a1e42]"
             >
               ✕
             </button>
@@ -183,7 +183,7 @@ export default function CyberpunkDatabase() {
             />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{viewing.name}</p>
-              <a href={viewing.thumbUrl ?? ""} download className="font-mono text-xs text-[#9a98a0] hover:text-[#ff6b8f]">
+              <a href={viewing.thumbUrl ?? ""} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </div>
