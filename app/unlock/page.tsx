@@ -35,9 +35,7 @@ function UnlockForm() {
       <p className="font-mono text-xs uppercase tracking-widest text-[#9a98a0]">
         Deep Tech Momentum
       </p>
-      <h1 className="neon-wordmark mt-3 text-3xl font-bold">
-        Pixel<span className="neon-accent">Punk</span>
-      </h1>
+      <h1 className="mt-3 text-3xl font-semibold text-white">PixelPunk</h1>
       <p className="mt-2 max-w-sm text-sm text-[#b0aeb6]">
         Internal tool. Enter the shared admin key to continue.
       </p>

@@ -6,9 +6,7 @@ export default function Home() {
       <p className="font-mono text-xs uppercase tracking-widest text-[#9a98a0]">
         Deep Tech Momentum
       </p>
-      <h1 className="mt-3 neon-wordmark neon-flicker text-5xl font-bold">
-        Pixel<span className="neon-accent">Punk</span>
-      </h1>
+      <h1 className="mt-3 text-4xl font-semibold text-white">PixelPunk</h1>
       <p className="mt-5 max-w-md text-sm text-[#b0aeb6]">
         Hi! Lina here, Visiting Associate during the DTM26 crunch times. I created this tool
         for your ease in the hope that you will treat it respectfully. If you are a newbie,
@@ -29,7 +27,7 @@ function ModuleCard({ title, href }: { title: string; href: string }) {
       href={href}
       className="group flex h-40 flex-col items-center justify-center rounded-2xl border border-[#2a2a30] bg-[#131316] p-6 transition hover:border-[#d4367a]"
     >
-      <h2 className="neon-card-title font-mono text-4xl font-bold uppercase tracking-wide">
+      <h2 className="text-3xl font-semibold text-white group-hover:text-[#ff6b8f]">
         {title}
       </h2>
     </Link>
