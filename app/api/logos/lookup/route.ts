@@ -13,11 +13,12 @@ async function convertCandidate(candidate: Candidate) {
   if (!imgRes.ok) return null;
   const rawBytes = Buffer.from(await imgRes.arrayBuffer());
   const originalBytes = await sharp(rawBytes, { density: RASTER_DENSITY }).png().toBuffer();
-  const whiteBytes = await convertToWhiteTransparent(rawBytes);
+  const { buffer: whiteBytes, quality } = await convertToWhiteTransparent(rawBytes);
   return {
     source: candidate.source,
     whiteBase64: whiteBytes.toString("base64"),
     originalBase64: originalBytes.toString("base64"),
+    quality,
   };
 }
 
@@ -93,12 +94,16 @@ export async function POST(req: NextRequest) {
       );
 
       if (converted.length > 0) {
+        const bestQuality = Math.max(...converted.map((c) => c.quality));
+        const candidates = converted
+          .map((c) => ({ ...c, recommended: c.quality === bestQuality }))
+          .sort((a, b) => b.quality - a.quality);
         return {
           queried: name,
           bucket: "auto_fetched" as const,
           matchedName: company?.companyName ?? name,
           attioCompanyId: company?.companyId,
-          candidates: converted,
+          candidates,
         };
       }
 

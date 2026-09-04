@@ -173,7 +173,7 @@ export default function LogoDatabase() {
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{viewing.companyName}</p>
               {viewing.whiteUrl && (
-                <a href={viewing.whiteUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                <a href={viewing.whiteUrl} download={`${viewing.companyName}.png`} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                   Download
                 </a>
               )}
@@ -263,7 +263,7 @@ function LogoRow({
               <button onClick={onView} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 View
               </button>
-              <a href={r.whiteUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <a href={r.whiteUrl} download={`${r.companyName}.png`} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </>

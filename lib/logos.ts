@@ -8,11 +8,34 @@ import { supabaseAdmin } from "@/lib/supabase";
 // logo. Harmless for raster formats; sharp only uses density for vectors.
 export const RASTER_DENSITY = 1200;
 
+// Heuristic quality score for a converted result, used to recommend the
+// best of several auto-fetched candidates. Two things distinguish a
+// clean logo from a broken conversion (e.g. a gradient-background source
+// the flat-background removal couldn't cleanly separate): it isn't
+// tiny, and its visible pixels aren't an abnormally sparse scatter
+// (streaks/fragments) or an abnormally solid block (background never
+// got removed at all).
+function scoreQuality(width: number, height: number, visibleCount: number): number {
+  const area = width * height;
+  if (area === 0) return 0;
+  const fillRatio = visibleCount / area;
+
+  const resolutionScore = Math.min(1, area / (250 * 80));
+
+  let fillScore: number;
+  if (fillRatio < 0.02) fillScore = (fillRatio / 0.02) * 0.3;
+  else if (fillRatio <= 0.45) fillScore = 1;
+  else fillScore = Math.max(0, 1 - (fillRatio - 0.45) / 0.45);
+
+  return resolutionScore * 0.5 + fillScore * 0.5;
+}
+
 // Converts any logo — already-transparent, or a flat solid background —
 // into a pure-white silhouette on a transparent background, trimmed to
 // its content. Deterministic (no AI), so the shape is always exactly the
-// source's, never redrawn.
-export async function convertToWhiteTransparent(inputBytes: Buffer): Promise<Buffer> {
+// source's, never redrawn. Also returns a rough quality score (0-1) so
+// callers with multiple candidate sources can flag the best-looking one.
+export async function convertToWhiteTransparent(inputBytes: Buffer): Promise<{ buffer: Buffer; quality: number }> {
   const img = sharp(inputBytes, { density: RASTER_DENSITY }).ensureAlpha();
   const { width, height } = await img.metadata();
   if (!width || !height) throw new Error("Could not read image dimensions");
@@ -64,10 +87,19 @@ export async function convertToWhiteTransparent(inputBytes: Buffer): Promise<Buf
     }
   }
 
-  return sharp(out, { raw: { width, height, channels: 4 } })
-    .trim()
+  const trimmed = sharp(out, { raw: { width, height, channels: 4 } }).trim();
+  const { data: trimmedData, info } = await trimmed.raw().toBuffer({ resolveWithObject: true });
+  let visibleCount = 0;
+  for (let i = 3; i < trimmedData.length; i += 4) {
+    if (trimmedData[i] > 10) visibleCount++;
+  }
+  const quality = scoreQuality(info.width, info.height, visibleCount);
+
+  const buffer = await sharp(trimmedData, { raw: { width: info.width, height: info.height, channels: 4 } })
     .png()
     .toBuffer();
+
+  return { buffer, quality };
 }
 
 export async function findLogoByName(companyName: string) {

@@ -199,7 +199,7 @@ export default function CyberpunkDatabase() {
                   <button onClick={() => setViewing(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                     View
                   </button>
-                  <a href={r.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                  <a href={r.thumbUrl} download={`${r.name}.png`} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                     Download
                   </a>
                 </>
@@ -238,7 +238,7 @@ export default function CyberpunkDatabase() {
             />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{viewing.name}</p>
-              <a href={viewing.thumbUrl ?? ""} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <a href={viewing.thumbUrl ?? ""} download={`${viewing.name}.png`} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </div>

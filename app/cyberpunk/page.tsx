@@ -826,7 +826,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
               <button onClick={() => setViewing(true)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 View
               </button>
-              <a href={hit.thumbUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <a href={hit.thumbUrl} download={`${hit.matchedName}.png`} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </>
@@ -917,7 +917,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
             <img src={hit.thumbUrl} alt={hit.matchedName} className="max-h-[70vh] w-full rounded-lg object-contain" />
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-              <a href={hit.thumbUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <a href={hit.thumbUrl} download={`${hit.matchedName}.png`} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </div>

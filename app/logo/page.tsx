@@ -7,6 +7,8 @@ type Candidate = {
   source: "attio" | "clearbit" | "harmonic" | "wikipedia";
   whiteBase64: string;
   originalBase64: string;
+  quality: number;
+  recommended: boolean;
 };
 
 const SOURCE_LABELS: Record<Candidate["source"], string> = {
@@ -85,7 +87,9 @@ function extractNamesFromCsv(text: string): string[] {
   return [...new Set(dataRows.map((r) => (r[col] ?? "").trim()).filter(Boolean))];
 }
 
-type Suggestion = { id: string; companyName: string; whiteUrl: string | null };
+type Suggestion =
+  | { source: "db"; id: string; companyName: string; whiteUrl: string | null }
+  | { source: "attio"; companyName: string };
 
 export default function LogoModule() {
   const [lookupInput, setLookupInput] = useState("");
@@ -99,15 +103,23 @@ export default function LogoModule() {
       setSuggestions([]);
       return;
     }
+    const q = lookupInput.trim();
     const controller = new AbortController();
     const t = setTimeout(() => {
-      fetch(`/api/logos/search?q=${encodeURIComponent(lookupInput.trim())}`, { signal: controller.signal })
-        .then((r) => r.json())
-        .then((data) =>
-          setSuggestions(
-            (data.results ?? []).slice(0, 30).map((r: any) => ({ id: r.id, companyName: r.companyName, whiteUrl: r.whiteUrl }))
-          )
-        )
+      Promise.all([
+        fetch(`/api/logos/search?q=${encodeURIComponent(q)}`, { signal: controller.signal }).then((r) => r.json()),
+        fetch(`/api/companies/suggest?q=${encodeURIComponent(q)}`, { signal: controller.signal }).then((r) => r.json()),
+      ])
+        .then(([dbData, attioData]) => {
+          const dbResults: Suggestion[] = (dbData.results ?? [])
+            .slice(0, 30)
+            .map((r: any) => ({ source: "db" as const, id: r.id, companyName: r.companyName, whiteUrl: r.whiteUrl }));
+          const dbNames = new Set(dbResults.map((s) => s.companyName.toLowerCase()));
+          const attioResults: Suggestion[] = (attioData.results ?? [])
+            .filter((r: any) => !dbNames.has(r.companyName.toLowerCase()))
+            .map((r: any) => ({ source: "attio" as const, companyName: r.companyName }));
+          setSuggestions([...dbResults, ...attioResults].slice(0, 30));
+        })
         .catch(() => {});
     }, 150);
     return () => {
@@ -119,7 +131,11 @@ export default function LogoModule() {
   function pickSuggestion(s: Suggestion) {
     setLookupInput(s.companyName);
     setSuggestions([]);
-    setLookupResults([{ queried: s.companyName, bucket: "has_result", logoId: s.id, matchedName: s.companyName, whiteUrl: s.whiteUrl }]);
+    if (s.source === "db") {
+      setLookupResults([{ queried: s.companyName, bucket: "has_result", logoId: s.id, matchedName: s.companyName, whiteUrl: s.whiteUrl }]);
+    } else {
+      runLookup([s.companyName]);
+    }
   }
 
   async function runLookup(namesOverride?: string[]) {
@@ -229,11 +245,11 @@ export default function LogoModule() {
           <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[#2a1e42] bg-[#16112c] shadow-lg">
             {suggestions.map((s) => (
               <button
-                key={s.id}
+                key={s.source === "db" ? s.id : `attio-${s.companyName}`}
                 onClick={() => pickSuggestion(s)}
                 className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#1a1030]"
               >
-                {s.whiteUrl ? (
+                {s.source === "db" && s.whiteUrl ? (
                   <div className="flex h-8 w-8 items-center justify-center rounded bg-[#1a1030]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={s.whiteUrl} alt={s.companyName} className="max-h-6 max-w-6" />
@@ -242,6 +258,11 @@ export default function LogoModule() {
                   <div className="h-8 w-8 rounded bg-[#2a1e42]" />
                 )}
                 <span className="text-sm text-white">{s.companyName}</span>
+                {s.source === "attio" && (
+                  <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+                    via attio
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -713,7 +734,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
               <button onClick={() => setViewing(true)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 View
               </button>
-              <a href={hit.whiteUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <a href={hit.whiteUrl} download={`${hit.matchedName}.png`} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </>
@@ -788,7 +809,7 @@ function FoundCard({ hit, single }: { hit: LookupHit; single: boolean }) {
             </div>
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-              <a href={hit.whiteUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              <a href={hit.whiteUrl} download={`${hit.matchedName}.png`} className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
                 Download
               </a>
             </div>
@@ -839,9 +860,17 @@ function AutoFetchedCard({
       <p className="text-sm font-medium text-white">{hit.matchedName}</p>
       <div className="mt-3 flex flex-wrap gap-3">
         {hit.candidates?.map((c, i) => (
-          <div key={c.source} className="rounded-lg border border-[#2a1e42] p-3">
-            <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+          <div
+            key={c.source}
+            className={`rounded-lg border p-3 ${c.recommended ? "border-[#d4367a] bg-[#1a1030]" : "border-[#2a1e42]"}`}
+          >
+            <p
+              className={`mb-2 text-center font-mono text-[10px] uppercase tracking-widest ${
+                c.recommended ? "text-[#ff6b8f]" : "text-[#8b7ba8]"
+              }`}
+            >
               {SOURCE_LABELS[c.source]}
+              {c.recommended && " · best"}
             </p>
             <div className="flex h-28 w-28 items-center justify-center rounded-lg bg-[#0f0a1f]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -854,7 +883,11 @@ function AutoFetchedCard({
             <button
               onClick={() => useCandidate(c, i)}
               disabled={busyIndex !== null}
-              className="mt-2 w-full rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className={`mt-2 w-full rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                c.recommended
+                  ? "bg-[#d4367a] text-white hover:bg-[#e0447f]"
+                  : "border border-[#2a1e42] text-white hover:border-[#d4367a]"
+              }`}
             >
               {busyIndex === i ? "Saving…" : "Use this"}
             </button>

@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     // Normalize the original to PNG too, so both stored files are a
     // predictable, always-valid format regardless of what was uploaded.
     const originalBytes = await sharp(rawBytes, { density: RASTER_DENSITY }).png().toBuffer();
-    const whiteBytes = await convertToWhiteTransparent(rawBytes);
+    const { buffer: whiteBytes } = await convertToWhiteTransparent(rawBytes);
     return NextResponse.json({
       companyName: companyName.trim(),
       whiteBase64: whiteBytes.toString("base64"),
