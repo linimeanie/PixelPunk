@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatWhen } from "@/lib/format";
 
 type Result = {
@@ -136,48 +136,15 @@ export default function LogoDatabase() {
           <p className="p-4 text-sm text-[#6b5f8a]">No records{query ? ` for "${query}"` : ""}.</p>
         )}
         {!loading && results.map((r) => (
-          <div key={r.id} className="flex items-center gap-4 p-4">
-            <input
-              type="checkbox"
-              checked={selected.has(r.id)}
-              onChange={() => toggle(r.id)}
-              className="h-4 w-4 accent-[#d4367a]"
-            />
-            {r.whiteUrl ? (
-              <div className="flex h-12 w-12 items-center justify-center rounded bg-[#0f0a1f]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={r.whiteUrl} alt={r.companyName} className="max-h-9 max-w-9 object-contain" />
-              </div>
-            ) : (
-              <div className="h-12 w-12 rounded bg-[#2a1e42]" />
-            )}
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">{r.companyName}</p>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
-                {formatWhen(r.updatedAt)}
-              </p>
-            </div>
-            <div className="flex items-center divide-x divide-[#2a1e42]">
-              {r.whiteUrl && (
-                <>
-                  <button onClick={() => setViewing(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                    View
-                  </button>
-                  <a href={r.whiteUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                    White
-                  </a>
-                </>
-              )}
-              {r.hiresUrl && (
-                <a href={r.hiresUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                  Original
-                </a>
-              )}
-              <button onClick={() => deleteOne(r)} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                Delete
-              </button>
-            </div>
-          </div>
+          <LogoRow
+            key={r.id}
+            result={r}
+            selected={selected.has(r.id)}
+            onToggle={() => toggle(r.id)}
+            onView={() => setViewing(r)}
+            onDelete={() => deleteOne(r)}
+            onReplaced={reload}
+          />
         ))}
       </div>
       {!query && (
@@ -218,6 +185,150 @@ export default function LogoDatabase() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogoRow({
+  result: r,
+  selected,
+  onToggle,
+  onView,
+  onDelete,
+  onReplaced,
+}: {
+  result: Result;
+  selected: boolean;
+  onToggle: () => void;
+  onView: () => void;
+  onDelete: () => void;
+  onReplaced: () => void;
+}) {
+  const [whiteBase64, setWhiteBase64] = useState<string | null>(null);
+  const [originalBase64, setOriginalBase64] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File) {
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.set("companyName", r.companyName);
+      form.set("file", file);
+      const res = await fetch("/api/logos/generate", { method: "POST", body: form });
+      const data = await res.json();
+      if (data.whiteBase64) {
+        setWhiteBase64(data.whiteBase64);
+        setOriginalBase64(data.originalBase64 ?? null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approve() {
+    if (!whiteBase64 || !originalBase64) return;
+    setBusy(true);
+    try {
+      await fetch("/api/logos/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyName: r.companyName, whiteBase64, originalBase64 }),
+      });
+      setWhiteBase64(null);
+      setOriginalBase64(null);
+      onReplaced();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-4">
+        <input type="checkbox" checked={selected} onChange={onToggle} className="h-4 w-4 accent-[#d4367a]" />
+        {r.whiteUrl ? (
+          <div className="flex h-12 w-12 items-center justify-center rounded bg-[#0f0a1f]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={r.whiteUrl} alt={r.companyName} className="max-h-9 max-w-9 object-contain" />
+          </div>
+        ) : (
+          <div className="h-12 w-12 rounded bg-[#2a1e42]" />
+        )}
+        <div className="flex-1">
+          <p className="text-sm font-medium text-white">{r.companyName}</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+            {formatWhen(r.updatedAt)}
+          </p>
+        </div>
+        <div className="flex items-center divide-x divide-[#2a1e42]">
+          {r.whiteUrl && (
+            <>
+              <button onClick={onView} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                View
+              </button>
+              <a href={r.whiteUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                White
+              </a>
+            </>
+          )}
+          {r.hiresUrl && (
+            <a href={r.hiresUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+              Original
+            </a>
+          )}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f] disabled:opacity-50"
+          >
+            Replace
+          </button>
+          <button onClick={onDelete} className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+            Delete
+          </button>
+        </div>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,.svg"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) handleFile(f);
+          e.target.value = "";
+        }}
+      />
+
+      {busy && !whiteBase64 && <p className="mt-2 text-xs text-[#6b5f8a]">Converting…</p>}
+
+      {whiteBase64 && (
+        <div className="mt-3 border-t border-[#2a1e42] pt-3">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+            Preview — nothing saved until you confirm
+          </p>
+          <div className="flex h-32 w-32 items-center justify-center rounded-lg bg-[#0f0a1f]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`data:image/png;base64,${whiteBase64}`} alt="preview" className="max-h-24 max-w-24 object-contain" />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <button onClick={approve} disabled={busy} className="rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setWhiteBase64(null);
+                setOriginalBase64(null);
+              }}
+              className="rounded-md border border-[#2a1e42] px-3 py-1.5 text-xs text-white"
+            >
+              Discard
+            </button>
           </div>
         </div>
       )}
