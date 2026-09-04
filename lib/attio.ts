@@ -46,6 +46,48 @@ export async function findGuardianInAttio(name: string): Promise<AttioMatch | nu
   };
 }
 
+export type AttioCompanyMatch = {
+  companyId: string;
+  companyName: string;
+  domain: string | null;
+  logoUrl: string | null;
+};
+
+// Finds a company in Attio by name. Same unambiguous-only rule as
+// findGuardianInAttio — an exact match, or the sole substring candidate.
+export async function findCompanyInAttio(name: string): Promise<AttioCompanyMatch | null> {
+  const key = process.env.ATTIO_API_KEY;
+  if (!key) return null;
+
+  const res = await fetch(`${ATTIO_BASE}/objects/companies/records/query`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filter: { name: { "$contains": name } },
+      limit: 5,
+    }),
+  });
+  if (!res.ok) return null;
+
+  const json = await res.json();
+  const records = json.data ?? [];
+  if (records.length === 0) return null;
+
+  const exact = records.filter(
+    (r: any) => (r.values.name?.[0]?.value ?? "").toLowerCase() === name.toLowerCase()
+  );
+  const record = exact.length === 1 ? exact[0] : records.length === 1 ? records[0] : null;
+  if (!record) return null;
+
+  const v = record.values;
+  return {
+    companyId: record.id.record_id,
+    companyName: v.name?.[0]?.value ?? name,
+    domain: v.domains?.[0]?.domain ?? null,
+    logoUrl: v.logo_url?.[0]?.value ?? null,
+  };
+}
+
 function statusOptionTitle(entryValues: any, slug: string): string | null {
   return entryValues[slug]?.[0]?.option?.title ?? null;
 }
