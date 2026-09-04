@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { supabaseAdmin } from "@/lib/supabase";
 import { findCompanyInAttio } from "@/lib/attio";
+import { findHarmonicCompanyLogoUrl } from "@/lib/harmonic";
 import { convertToWhiteTransparent } from "@/lib/logos";
 
 // Bucketed multi-name lookup: paste/upload a list of company names and
 // see which already have a result, which can be auto-fetched (Attio's
-// own logo_url, or a Clearbit domain fallback), and which need a raw
-// logo uploaded from scratch.
+// own logo_url, a Clearbit domain fallback, or Harmonic), and which need
+// a raw logo uploaded from scratch.
 export async function POST(req: NextRequest) {
   const { names } = (await req.json()) as { names: string[] };
   if (!Array.isArray(names) || names.length === 0) {
@@ -53,12 +54,16 @@ export async function POST(req: NextRequest) {
       }
 
       // Not in our database — see if Attio knows this company and has a
-      // logo for it (its own logo_url, or a Clearbit domain fallback).
+      // logo for it (its own logo_url, a Clearbit domain fallback, or
+      // Harmonic as a last resort — same three-way fallback chain as the
+      // guardian photo lookup).
       const company = await findCompanyInAttio(name);
       if (company) {
+        const harmonicLogoUrl = await findHarmonicCompanyLogoUrl(company.domain);
         const candidates = [
           company.logoUrl,
           company.domain ? `https://logo.clearbit.com/${company.domain}` : null,
+          harmonicLogoUrl,
         ].filter((u): u is string => Boolean(u));
 
         for (const url of candidates) {
