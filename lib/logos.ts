@@ -2,12 +2,18 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { supabaseAdmin } from "@/lib/supabase";
 
+// Rasterizes vector input (SVG) at a much higher resolution than its
+// declared intrinsic size — Commons/Wikipedia SVGs in particular often
+// declare a tiny viewBox, which would otherwise produce a postage-stamp
+// logo. Harmless for raster formats; sharp only uses density for vectors.
+export const RASTER_DENSITY = 1200;
+
 // Converts any logo — already-transparent, or a flat solid background —
 // into a pure-white silhouette on a transparent background, trimmed to
 // its content. Deterministic (no AI), so the shape is always exactly the
 // source's, never redrawn.
 export async function convertToWhiteTransparent(inputBytes: Buffer): Promise<Buffer> {
-  const img = sharp(inputBytes).ensureAlpha();
+  const img = sharp(inputBytes, { density: RASTER_DENSITY }).ensureAlpha();
   const { width, height } = await img.metadata();
   if (!width || !height) throw new Error("Could not read image dimensions");
 

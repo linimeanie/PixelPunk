@@ -3,6 +3,19 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+type Candidate = {
+  source: "attio" | "clearbit" | "harmonic" | "wikipedia";
+  whiteBase64: string;
+  originalBase64: string;
+};
+
+const SOURCE_LABELS: Record<Candidate["source"], string> = {
+  attio: "Attio",
+  clearbit: "Clearbit",
+  harmonic: "Harmonic",
+  wikipedia: "Wikipedia",
+};
+
 type LookupHit = {
   queried: string;
   bucket: "has_result" | "auto_fetched" | "unrecognized";
@@ -11,8 +24,7 @@ type LookupHit = {
   updatedAt?: string;
   whiteUrl?: string | null;
   attioCompanyId?: string;
-  whiteBase64?: string;
-  originalBase64?: string;
+  candidates?: Candidate[];
 };
 
 function parseNames(raw: string): string[] {
@@ -266,11 +278,11 @@ export default function LogoModule() {
           {autoFetched.length > 0 && (
             <div>
               <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
-                {autoFetched.length} found via Attio
+                {autoFetched.length} found elsewhere
               </p>
               <p className="mt-1 text-xs text-[#6b5f8a]">
-                Not in our database, but Attio had a logo — already converted below. Confirm it&rsquo;s the right mark
-                before adding.
+                Not in our database — here&rsquo;s every source that had a logo. Quality varies a lot, so pick the
+                best one (or none).
               </p>
               <div className="mt-2 flex flex-col gap-3">
                 {autoFetched.map((r) => (
@@ -281,8 +293,7 @@ export default function LogoModule() {
                     onDiscarded={() =>
                       updateLookupHit(r.queried, {
                         bucket: "unrecognized",
-                        whiteBase64: undefined,
-                        originalBase64: undefined,
+                        candidates: undefined,
                         attioCompanyId: undefined,
                       })
                     }
@@ -797,40 +808,62 @@ function AutoFetchedCard({
   onResolved: (resolved: { logoId: string; matchedName: string; whiteUrl: string }) => void;
   onDiscarded: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [busyIndex, setBusyIndex] = useState<number | null>(null);
+
+  async function useCandidate(c: Candidate, index: number) {
+    setBusyIndex(index);
+    try {
+      const res = await fetch("/api/logos/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: hit.matchedName,
+          whiteBase64: c.whiteBase64,
+          originalBase64: c.originalBase64,
+          attioCompanyId: hit.attioCompanyId,
+        }),
+      });
+      const data = await res.json();
+      onResolved({
+        logoId: data.logoId,
+        matchedName: hit.matchedName!,
+        whiteUrl: `data:image/png;base64,${c.whiteBase64}`,
+      });
+    } finally {
+      setBusyIndex(null);
+    }
+  }
 
   return (
     <div className="rounded-lg border border-[#2a1e42] p-4">
       <p className="text-sm font-medium text-white">{hit.matchedName}</p>
-      <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">via attio</p>
-      <PreviewApprove
-        whiteBase64={hit.whiteBase64!}
-        onApprove={async () => {
-          setBusy(true);
-          try {
-            const res = await fetch("/api/logos/approve", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                companyName: hit.matchedName,
-                whiteBase64: hit.whiteBase64,
-                originalBase64: hit.originalBase64,
-                attioCompanyId: hit.attioCompanyId,
-              }),
-            });
-            const data = await res.json();
-            onResolved({
-              logoId: data.logoId,
-              matchedName: hit.matchedName!,
-              whiteUrl: `data:image/png;base64,${hit.whiteBase64}`,
-            });
-          } finally {
-            setBusy(false);
-          }
-        }}
-        onDiscard={onDiscarded}
-      />
-      {busy && <p className="mt-2 text-xs text-[#6b5f8a]">Saving…</p>}
+      <div className="mt-3 flex flex-wrap gap-3">
+        {hit.candidates?.map((c, i) => (
+          <div key={c.source} className="rounded-lg border border-[#2a1e42] p-3">
+            <p className="mb-2 text-center font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+              {SOURCE_LABELS[c.source]}
+            </p>
+            <div className="flex h-28 w-28 items-center justify-center rounded-lg bg-[#0f0a1f]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`data:image/png;base64,${c.whiteBase64}`}
+                alt={`${hit.matchedName} via ${c.source}`}
+                className="max-h-20 max-w-20 object-contain"
+              />
+            </div>
+            <button
+              onClick={() => useCandidate(c, i)}
+              disabled={busyIndex !== null}
+              className="mt-2 w-full rounded-md bg-[#d4367a] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+            >
+              {busyIndex === i ? "Saving…" : "Use this"}
+            </button>
+          </div>
+        ))}
+      </div>
+      <button onClick={onDiscarded} className="mt-3 rounded-md border border-[#2a1e42] px-3 py-1.5 text-xs text-white">
+        None of these
+      </button>
     </div>
   );
 }

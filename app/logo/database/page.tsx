@@ -172,18 +172,11 @@ export default function LogoDatabase() {
             </div>
             <div className="mt-3 flex items-center justify-between">
               <p className="text-sm font-medium text-white">{viewing.companyName}</p>
-              <div className="flex gap-3">
-                {viewing.whiteUrl && (
-                  <a href={viewing.whiteUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                    White
-                  </a>
-                )}
-                {viewing.hiresUrl && (
-                  <a href={viewing.hiresUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                    Original
-                  </a>
-                )}
-              </div>
+              {viewing.whiteUrl && (
+                <a href={viewing.whiteUrl} download className="font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
+                  Download
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -271,14 +264,9 @@ function LogoRow({
                 View
               </button>
               <a href={r.whiteUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-                White
+                Download
               </a>
             </>
-          )}
-          {r.hiresUrl && (
-            <a href={r.hiresUrl} download className="px-3 font-mono text-xs text-[#8b7ba8] hover:text-[#ff6b8f]">
-              Original
-            </a>
           )}
           <button
             onClick={() => fileRef.current?.click()}

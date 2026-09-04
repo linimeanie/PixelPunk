@@ -3,12 +3,31 @@ import sharp from "sharp";
 import { supabaseAdmin } from "@/lib/supabase";
 import { findCompanyInAttio } from "@/lib/attio";
 import { findHarmonicCompanyLogoUrl } from "@/lib/harmonic";
-import { convertToWhiteTransparent } from "@/lib/logos";
+import { findWikipediaLogoUrl } from "@/lib/wikipedia";
+import { convertToWhiteTransparent, RASTER_DENSITY } from "@/lib/logos";
+
+type Candidate = { source: "attio" | "clearbit" | "harmonic" | "wikipedia"; url: string };
+
+async function convertCandidate(candidate: Candidate) {
+  const imgRes = await fetch(candidate.url);
+  if (!imgRes.ok) return null;
+  const rawBytes = Buffer.from(await imgRes.arrayBuffer());
+  const originalBytes = await sharp(rawBytes, { density: RASTER_DENSITY }).png().toBuffer();
+  const whiteBytes = await convertToWhiteTransparent(rawBytes);
+  return {
+    source: candidate.source,
+    whiteBase64: whiteBytes.toString("base64"),
+    originalBase64: originalBytes.toString("base64"),
+  };
+}
 
 // Bucketed multi-name lookup: paste/upload a list of company names and
-// see which already have a result, which can be auto-fetched (Attio's
-// own logo_url, a Clearbit domain fallback, or Harmonic), and which need
-// a raw logo uploaded from scratch.
+// see which already have a result, which can be auto-fetched (tries
+// Attio's own logo_url, a Clearbit domain fallback, Harmonic, and
+// Wikidata's logo property in parallel and returns every one that
+// actually resolves — auto-fetch quality varies a lot by source, so
+// staff picks the best one rather than the app silently guessing), and
+// which need a raw logo uploaded from scratch.
 export async function POST(req: NextRequest) {
   const { names } = (await req.json()) as { names: string[] };
   if (!Array.isArray(names) || names.length === 0) {
@@ -53,38 +72,34 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      // Not in our database — see if Attio knows this company and has a
-      // logo for it (its own logo_url, a Clearbit domain fallback, or
-      // Harmonic as a last resort — same three-way fallback chain as the
-      // guardian photo lookup).
+      // Not in our database — gather every source that has a logo for
+      // this company (Attio, Clearbit, Harmonic, Wikidata) rather than
+      // stopping at the first one that resolves.
       const company = await findCompanyInAttio(name);
-      if (company) {
-        const harmonicLogoUrl = await findHarmonicCompanyLogoUrl(company.domain);
-        const candidates = [
-          company.logoUrl,
-          company.domain ? `https://logo.clearbit.com/${company.domain}` : null,
-          harmonicLogoUrl,
-        ].filter((u): u is string => Boolean(u));
+      const [harmonicLogoUrl, wikipediaLogoUrl] = await Promise.all([
+        findHarmonicCompanyLogoUrl(company?.domain ?? null),
+        findWikipediaLogoUrl(name),
+      ]);
 
-        for (const url of candidates) {
-          try {
-            const imgRes = await fetch(url);
-            if (!imgRes.ok) continue;
-            const rawBytes = Buffer.from(await imgRes.arrayBuffer());
-            const originalBytes = await sharp(rawBytes).png().toBuffer();
-            const whiteBytes = await convertToWhiteTransparent(rawBytes);
-            return {
-              queried: name,
-              bucket: "auto_fetched" as const,
-              matchedName: company.companyName,
-              attioCompanyId: company.companyId,
-              whiteBase64: whiteBytes.toString("base64"),
-              originalBase64: originalBytes.toString("base64"),
-            };
-          } catch {
-            // try the next candidate
-          }
-        }
+      const candidateUrls: Candidate[] = [
+        company?.logoUrl ? { source: "attio", url: company.logoUrl } : null,
+        company?.domain ? { source: "clearbit", url: `https://logo.clearbit.com/${company.domain}` } : null,
+        harmonicLogoUrl ? { source: "harmonic", url: harmonicLogoUrl } : null,
+        wikipediaLogoUrl ? { source: "wikipedia", url: wikipediaLogoUrl } : null,
+      ].filter((c): c is Candidate => c !== null);
+
+      const converted = (await Promise.all(candidateUrls.map((c) => convertCandidate(c).catch(() => null)))).filter(
+        (c): c is NonNullable<typeof c> => c !== null
+      );
+
+      if (converted.length > 0) {
+        return {
+          queried: name,
+          bucket: "auto_fetched" as const,
+          matchedName: company?.companyName ?? name,
+          attioCompanyId: company?.companyId,
+          candidates: converted,
+        };
       }
 
       return { queried: name, bucket: "unrecognized" as const };

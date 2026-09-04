@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
-import { convertToWhiteTransparent } from "@/lib/logos";
+import { convertToWhiteTransparent, RASTER_DENSITY } from "@/lib/logos";
 
 // Runs the white/transparent conversion on a freshly-uploaded raw logo.
 // Returns a PREVIEW only (base64) — nothing is written to the database or
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const rawBytes = Buffer.from(await file.arrayBuffer());
     // Normalize the original to PNG too, so both stored files are a
     // predictable, always-valid format regardless of what was uploaded.
-    const originalBytes = await sharp(rawBytes).png().toBuffer();
+    const originalBytes = await sharp(rawBytes, { density: RASTER_DENSITY }).png().toBuffer();
     const whiteBytes = await convertToWhiteTransparent(rawBytes);
     return NextResponse.json({
       companyName: companyName.trim(),
