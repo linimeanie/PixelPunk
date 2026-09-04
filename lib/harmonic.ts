@@ -49,3 +49,32 @@ export async function findHarmonicCompanyLogoUrl(domain: string | null): Promise
     return null;
   }
 }
+
+// Free-text company name search, used as a name-suggestion fallback when
+// Attio has no match. Harmonic's keyword search is noisy for common
+// company names (searching "Merck" surfaces dozens of unrelated small
+// businesses — real estate agencies, furniture stores — that just
+// happen to share the word), so this only keeps results Harmonic has
+// actually enriched with a logo, which correlates with being a real,
+// notable company rather than an indexed micro-site.
+export async function findHarmonicCompanyNameCandidates(query: string): Promise<string[]> {
+  const key = process.env.HARMONIC_API_KEY;
+  if (!key || !query.trim()) return [];
+
+  try {
+    const res = await fetch("https://api.harmonic.ai/search/companies_by_keywords?size=50", {
+      method: "POST",
+      headers: { apikey: key, "Content-Type": "application/json" },
+      body: JSON.stringify({ keywords: query, include_ids_only: false }),
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const q = query.toLowerCase();
+    const names: string[] = (json.results ?? [])
+      .filter((r: any) => r.logo_url && typeof r.name === "string" && r.name.toLowerCase().includes(q))
+      .map((r: any) => r.name as string);
+    return [...new Set(names)].slice(0, 5);
+  } catch {
+    return [];
+  }
+}

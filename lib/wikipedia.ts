@@ -25,3 +25,22 @@ export async function findWikipediaLogoUrl(name: string): Promise<string | null>
     return null;
   }
 }
+
+// Name-suggestion fallback for the "did you mean" prompt, used only once
+// Attio and Harmonic have both come up empty. Wikidata's own search
+// ranking is reasonably clean (it's a general encyclopedia search, not a
+// full-text index of every micro-site), so no extra filtering here.
+export async function findWikipediaCompanyNameCandidates(query: string): Promise<string[]> {
+  if (!query.trim()) return [];
+  try {
+    const res = await fetch(
+      `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(query)}&language=en&format=json&limit=5&type=item`
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    const labels: string[] = (json.search ?? []).map((r: any) => r.label).filter((l: unknown): l is string => typeof l === "string");
+    return [...new Set(labels)];
+  } catch {
+    return [];
+  }
+}

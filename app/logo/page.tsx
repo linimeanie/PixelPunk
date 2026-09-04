@@ -89,7 +89,7 @@ function extractNamesFromCsv(text: string): string[] {
 
 type Suggestion =
   | { source: "db"; id: string; companyName: string; whiteUrl: string | null }
-  | { source: "attio"; companyName: string };
+  | { source: "attio" | "harmonic" | "wikipedia"; companyName: string };
 
 export default function LogoModule() {
   const [lookupInput, setLookupInput] = useState("");
@@ -110,15 +110,15 @@ export default function LogoModule() {
         fetch(`/api/logos/search?q=${encodeURIComponent(q)}`, { signal: controller.signal }).then((r) => r.json()),
         fetch(`/api/companies/suggest?q=${encodeURIComponent(q)}`, { signal: controller.signal }).then((r) => r.json()),
       ])
-        .then(([dbData, attioData]) => {
+        .then(([dbData, externalData]) => {
           const dbResults: Suggestion[] = (dbData.results ?? [])
             .slice(0, 30)
             .map((r: any) => ({ source: "db" as const, id: r.id, companyName: r.companyName, whiteUrl: r.whiteUrl }));
           const dbNames = new Set(dbResults.map((s) => s.companyName.toLowerCase()));
-          const attioResults: Suggestion[] = (attioData.results ?? [])
+          const externalResults: Suggestion[] = (externalData.results ?? [])
             .filter((r: any) => !dbNames.has(r.companyName.toLowerCase()))
-            .map((r: any) => ({ source: "attio" as const, companyName: r.companyName }));
-          setSuggestions([...dbResults, ...attioResults].slice(0, 30));
+            .map((r: any) => ({ source: r.source, companyName: r.companyName }));
+          setSuggestions([...dbResults, ...externalResults].slice(0, 30));
         })
         .catch(() => {});
     }, 150);
@@ -245,7 +245,7 @@ export default function LogoModule() {
           <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-80 overflow-y-auto rounded-lg border border-[#2a1e42] bg-[#16112c] shadow-lg">
             {suggestions.map((s) => (
               <button
-                key={s.source === "db" ? s.id : `attio-${s.companyName}`}
+                key={s.source === "db" ? s.id : `${s.source}-${s.companyName}`}
                 onClick={() => pickSuggestion(s)}
                 className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#1a1030]"
               >
@@ -258,9 +258,9 @@ export default function LogoModule() {
                   <div className="h-8 w-8 rounded bg-[#2a1e42]" />
                 )}
                 <span className="text-sm text-white">{s.companyName}</span>
-                {s.source === "attio" && (
+                {s.source !== "db" && (
                   <span className="ml-auto font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
-                    via attio
+                    via {s.source}
                   </span>
                 )}
               </button>
@@ -348,8 +348,10 @@ export default function LogoModule() {
 type QueueItem = {
   key: string;
   name: string;
+  originalName: string;
   file: File;
-  status: "duplicate_review" | "queued" | "processing" | "preview" | "approved" | "error";
+  status: "name_review" | "duplicate_review" | "queued" | "processing" | "preview" | "approved" | "error";
+  nameCandidates?: { companyName: string; source: string }[];
   whiteBase64?: string;
   originalBase64?: string;
   error?: string;
@@ -362,6 +364,19 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const processingRef = useRef(false);
+
+  async function checkDuplicate(key: string, name: string): Promise<QueueItem> {
+    try {
+      const res = await fetch(`/api/logos/exists?name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      if (data.exists) {
+        return { key, name, existingWhiteUrl: data.whiteUrl, status: "duplicate_review" } as QueueItem;
+      }
+    } catch {
+      // if the check itself fails, don't block the upload over it
+    }
+    return { key, name, status: "queued" } as QueueItem;
+  }
 
   async function handleFiles(fileList: FileList) {
     const files = [...fileList];
@@ -377,22 +392,35 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
     if (imageFiles.length > 0) {
       const newItems: QueueItem[] = await Promise.all(
         imageFiles.map(async (file) => {
-          const name = file.name.replace(/\.[^.]+$/, "");
+          const originalName = file.name.replace(/\.[^.]+$/, "");
           const key = `${file.name}-${file.lastModified}-${Math.random()}`;
+
+          let nameCandidates: { companyName: string; source: string }[] | undefined;
           try {
-            const res = await fetch(`/api/logos/exists?name=${encodeURIComponent(name)}`);
+            const res = await fetch(`/api/companies/suggest?q=${encodeURIComponent(originalName)}`);
             const data = await res.json();
-            if (data.exists) {
-              return { key, name, file, status: "duplicate_review" as const, existingWhiteUrl: data.whiteUrl };
-            }
+            const results: { companyName: string; source: string }[] = data.results ?? [];
+            const exact = results.find((r) => r.companyName.toLowerCase() === originalName.toLowerCase());
+            if (!exact && results.length > 0) nameCandidates = results.slice(0, 5);
           } catch {
-            // if the check itself fails, don't block the upload over it
+            // if the check itself fails, just proceed with the typed name
           }
-          return { key, name, file, status: "queued" as const };
+
+          if (nameCandidates) {
+            return { key, name: originalName, originalName, file, status: "name_review" as const, nameCandidates };
+          }
+          const dup = await checkDuplicate(key, originalName);
+          return { ...dup, originalName, file };
         })
       );
       setQueue((q) => [...q, ...newItems]);
     }
+  }
+
+  async function confirmName(item: QueueItem, chosenName: string) {
+    setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, name: chosenName, nameCandidates: undefined } : i)));
+    const dup = await checkDuplicate(item.key, chosenName);
+    setQueue((q) => q.map((i) => (i.key === item.key ? { ...i, ...dup } : i)));
   }
 
   function proceedAnyway(item: QueueItem) {
@@ -529,6 +557,15 @@ function UploadZone({ onNamesFromCsv }: { onNamesFromCsv: (names: string[]) => v
                     Remove
                   </button>
                 </div>
+                {item.status === "name_review" && item.nameCandidates && (
+                  <div className="mt-2">
+                    <NamePicker
+                      initialName={item.originalName}
+                      candidates={item.nameCandidates}
+                      onPick={(chosen) => confirmName(item, chosen)}
+                    />
+                  </div>
+                )}
                 {item.status === "duplicate_review" && (
                   <DuplicateReviewRow item={item} onProceed={() => proceedAnyway(item)} onSkip={() => discard(item)} />
                 )}
@@ -908,6 +945,7 @@ function MissingCard({
   name: string;
   onResolved: (resolved: { logoId: string; matchedName: string; whiteUrl: string }) => void;
 }) {
+  const { resolvedName, candidates, pick } = useNameCheck(name);
   const [whiteBase64, setWhiteBase64] = useState<string | null>(null);
   const [originalBase64, setOriginalBase64] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -916,7 +954,7 @@ function MissingCard({
     setBusy(true);
     try {
       const form = new FormData();
-      form.set("companyName", name);
+      form.set("companyName", resolvedName ?? name);
       form.set("file", file);
       const res = await fetch("/api/logos/generate", { method: "POST", body: form });
       const data = await res.json();
@@ -931,17 +969,18 @@ function MissingCard({
 
   async function approve() {
     if (!whiteBase64 || !originalBase64) return;
+    const finalName = resolvedName ?? name;
     setBusy(true);
     try {
       const res = await fetch("/api/logos/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName: name, whiteBase64, originalBase64 }),
+        body: JSON.stringify({ companyName: finalName, whiteBase64, originalBase64 }),
       });
       const data = await res.json();
       onResolved({
         logoId: data.logoId,
-        matchedName: name,
+        matchedName: finalName,
         whiteUrl: `data:image/png;base64,${whiteBase64}`,
       });
     } finally {
@@ -951,17 +990,21 @@ function MissingCard({
 
   return (
     <div className="rounded-lg border border-[#2a1e42] p-4">
-      <p className="text-sm font-medium text-white">{name}</p>
+      <p className="text-sm font-medium text-white">{resolvedName ?? name}</p>
       <p className="font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">no logo on file</p>
 
-      {!whiteBase64 ? (
+      {candidates ? (
+        <div className="mt-2">
+          <NamePicker initialName={name} candidates={candidates} onPick={pick} />
+        </div>
+      ) : !whiteBase64 ? (
         <label className="mt-2 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a1e42] py-6 text-xs text-[#8b7ba8] hover:border-[#d4367a]">
-          {busy ? "Converting…" : "Upload raw logo"}
+          {busy ? "Converting…" : resolvedName ? "Upload raw logo" : "Checking name…"}
           <input
             type="file"
             accept="image/*,.svg"
             className="hidden"
-            disabled={busy}
+            disabled={busy || !resolvedName}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) generate(f);
@@ -978,6 +1021,86 @@ function MissingCard({
           }}
         />
       )}
+    </div>
+  );
+}
+
+// Checks a not-yet-saved company name against Attio (then Harmonic, then
+// Wikipedia) before it's committed, so a filename- or search-box-typed
+// name like "merck" gets corrected to "Merck KGaA" instead of being
+// saved verbatim. Silently resolves to the typed name when there's
+// nothing to correct — this should never add friction to the common
+// case where the name was already right.
+function useNameCheck(initialName: string) {
+  const [resolvedName, setResolvedName] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<{ companyName: string; source: string }[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/companies/suggest?q=${encodeURIComponent(initialName)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        const results: { companyName: string; source: string }[] = data.results ?? [];
+        const exact = results.find((r) => r.companyName.toLowerCase() === initialName.toLowerCase());
+        if (exact || results.length === 0) {
+          setResolvedName(exact?.companyName ?? initialName);
+        } else {
+          setCandidates(results.slice(0, 5));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedName(initialName);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialName]);
+
+  function pick(name: string) {
+    setCandidates(null);
+    setResolvedName(name);
+  }
+
+  return { resolvedName, candidates, pick };
+}
+
+function NamePicker({
+  initialName,
+  candidates,
+  onPick,
+}: {
+  initialName: string;
+  candidates: { companyName: string; source: string }[];
+  onPick: (name: string) => void;
+}) {
+  return (
+    <div className="rounded-md border border-[#2a1e42] bg-[#0f0a1f] p-3">
+      <p className="text-xs text-white">
+        Do you mean <span className="text-[#ff6b8f]">&ldquo;{candidates[0].companyName}&rdquo;</span>
+        {candidates.length > 1 ? ", or one of these?" : "?"}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {candidates.map((c) => (
+          <button
+            key={c.companyName}
+            onClick={() => onPick(c.companyName)}
+            className="rounded-md border border-[#2a1e42] px-3 py-1.5 text-left text-xs text-white hover:border-[#d4367a]"
+          >
+            {c.companyName}
+            <span className="ml-2 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
+              {c.source}
+            </span>
+          </button>
+        ))}
+        <button
+          onClick={() => onPick(initialName)}
+          className="rounded-md px-3 py-1.5 text-left font-mono text-xs text-[#8b7ba8] hover:text-white"
+        >
+          Use &ldquo;{initialName}&rdquo; as typed
+        </button>
+      </div>
     </div>
   );
 }
