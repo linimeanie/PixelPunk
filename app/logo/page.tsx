@@ -165,9 +165,17 @@ export default function LogoModule() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-16">
-      <Link href="/" className="font-mono text-xs text-[#8b7ba8] hover:text-white">
-        ← PixelPunk
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/" className="font-mono text-xs text-[#8b7ba8] hover:text-white">
+          ← PixelPunk
+        </Link>
+        <Link
+          href="/logo/database"
+          className="rounded-md border border-[#2a1e42] px-3 py-1.5 font-mono text-xs text-white hover:border-[#d4367a]"
+        >
+          Database →
+        </Link>
+      </div>
       <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-[#8b7ba8]">
         Partner Marks
       </p>
